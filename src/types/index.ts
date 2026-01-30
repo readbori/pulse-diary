@@ -1,5 +1,11 @@
 export type EmotionType = 'joy' | 'sadness' | 'anger' | 'fear' | 'surprise' | 'neutral';
 
+export type MBTIType = 
+  | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP'
+  | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP'
+  | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ'
+  | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
+
 export interface EmotionRecord {
   id: string;
   userId: string;
@@ -39,27 +45,25 @@ export interface UserProfile {
   birthYear?: number;
   occupation?: string;
   interests?: string[];
+  mbti?: MBTIType;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface UserSettings {
   userId: string;
-  // 알림 설정
   dailyReminderEnabled: boolean;
-  dailyReminderTime: string; // "HH:mm"
-  reminderIntervalDays: number; // 1 = 매일, 2 = 격일
-  // 주간 리포트
+  dailyReminderTime: string;
+  reminderIntervalDays: number;
   weeklyReportEnabled: boolean;
-  weeklyReportDay: number; // 0-6 (일-토)
+  weeklyReportDay: number;
   weeklyReportTime: string;
-  // 데이터 관리
+  reportFrequency: 'daily' | 'weekly' | 'monthly';
+  maxReportsPerWeek: number;
   autoDeleteAudio: boolean;
   audioDeleteDays: number;
-  // 외부 연동 (향후)
   notionIntegration?: { enabled: boolean; databaseId?: string };
   googleCalendarIntegration?: { enabled: boolean; calendarId?: string };
-  // 기타
   language: 'ko' | 'en';
   theme: 'light' | 'dark' | 'system';
 }

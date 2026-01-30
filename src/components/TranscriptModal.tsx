@@ -43,7 +43,7 @@ export function TranscriptModal({
               </button>
             </div>
 
-            <div className="bg-violet-50 rounded-2xl p-4 mb-6 min-h-[120px] max-h-[200px] overflow-y-auto">
+            <div className="bg-indigo-50 rounded-2xl p-4 mb-6 min-h-[120px] max-h-[200px] overflow-y-auto">
               <p className="text-gray-700 leading-relaxed">
                 {transcript || '(음성이 텍스트로 변환됩니다...)'}
               </p>
@@ -58,7 +58,7 @@ export function TranscriptModal({
                 flex items-center justify-center gap-2
                 ${isProcessing || !transcript
                   ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700'
+                  : 'bg-gradient-to-r from-indigo-500 to-teal-600 hover:from-indigo-600 hover:to-teal-700'
                 }
               `}
             >

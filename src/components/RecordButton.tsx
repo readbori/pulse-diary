@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, Square, RotateCcw, Check, MessageCircle, Sparkles } from 'lucide-react';
+import { Mic, Square, RotateCcw, Check } from 'lucide-react';
 
 interface RecordButtonProps {
   isRecording: boolean;
@@ -41,14 +41,19 @@ export function RecordButton({
             {isRecording && (
               <>
                 <motion.div
-                  className="absolute inset-0 rounded-full bg-pink-300/30"
-                  animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 rounded-full bg-indigo-400/20"
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
                 />
                 <motion.div
-                  className="absolute inset-0 rounded-full bg-purple-300/30"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+                  className="absolute inset-0 rounded-full bg-teal-400/20"
+                  animate={{ scale: [1, 1.8, 1], opacity: [0.4, 0, 0.4] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.3, ease: "easeOut" }}
+                />
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-sky-400/20"
+                  animate={{ scale: [1, 2.2, 1], opacity: [0.3, 0, 0.3] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.6, ease: "easeOut" }}
                 />
               </>
             )}
@@ -61,14 +66,14 @@ export function RecordButton({
                 relative w-36 h-36 rounded-full flex items-center justify-center
                 transition-all duration-500 soft-shadow
                 ${isRecording 
-                  ? 'bg-gradient-to-br from-rose-400 via-pink-400 to-purple-400' 
-                  : 'bg-gradient-to-br from-purple-400 via-pink-400 to-rose-300 hover:from-purple-500 hover:via-pink-500 hover:to-rose-400'
+                  ? 'bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 animate-pulse-ring' 
+                  : 'bg-gradient-to-br from-indigo-500 via-teal-500 to-sky-400 hover:from-indigo-600 hover:via-teal-600 hover:to-sky-500'
                 }
               `}
             >
               <motion.div
-                animate={isRecording ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ duration: 0.5, repeat: isRecording ? Infinity : 0 }}
+                animate={isRecording ? { scale: [1, 1.15, 1] } : {}}
+                transition={{ duration: 0.8, repeat: isRecording ? Infinity : 0 }}
               >
                 {isRecording ? (
                   <Square className="w-12 h-12 text-white fill-white drop-shadow-lg" />
@@ -98,7 +103,7 @@ export function RecordButton({
               whileTap={{ scale: 0.95 }}
               whileHover={{ scale: 1.05 }}
               onClick={onSave}
-              className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 flex items-center justify-center soft-shadow"
+              className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 hover:from-teal-500 hover:to-emerald-600 flex items-center justify-center soft-shadow"
             >
               <Check className="w-10 h-10 text-white drop-shadow" />
             </motion.button>
@@ -113,7 +118,7 @@ export function RecordButton({
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center gap-2"
           >
-            <span className="text-3xl font-light text-purple-600 tracking-wider">
+            <span className="text-3xl font-light text-indigo-600 tracking-wider">
               {formatDuration(duration)}
             </span>
             <span className="text-sm text-gray-400 font-emotional">

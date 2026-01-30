@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Check, User, Briefcase, Heart, Calendar } from 'lucide-react';
+import { ChevronRight, Check, User, Briefcase, Brain, Calendar } from 'lucide-react';
 import { saveProfile, saveSettings } from '@/lib/db';
-import type { UserProfile, UserSettings } from '@/types';
+import type { UserProfile, UserSettings, MBTIType } from '@/types';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -11,9 +11,10 @@ export function OnboardingPage() {
   const [name, setName] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
   const [occupation, setOccupation] = useState('');
+  const [mbti, setMbti] = useState<MBTIType | ''>('');
   const [interests, setInterests] = useState<string[]>([]);
 
-  const totalSteps = 4;
+  const totalSteps = 5;
 
   const handleNext = async () => {
     if (step < totalSteps) {
@@ -30,22 +31,24 @@ export function OnboardingPage() {
     const profile: UserProfile = {
       userId,
       name,
-      birthYear: parseInt(ageGroup) || undefined, // Storing age group as rough birth year or just string if changed
+      birthYear: parseInt(ageGroup) || undefined,
       occupation,
       interests,
+      mbti: mbti || undefined,
       createdAt: now,
       updatedAt: now
     };
 
-    // Default settings
     const settings: UserSettings = {
       userId,
       dailyReminderEnabled: false,
       dailyReminderTime: "21:00",
       reminderIntervalDays: 1,
       weeklyReportEnabled: true,
-      weeklyReportDay: 0, // Sunday
+      weeklyReportDay: 0,
       weeklyReportTime: "09:00",
+      reportFrequency: 'weekly',
+      maxReportsPerWeek: 1,
       autoDeleteAudio: false,
       audioDeleteDays: 30,
       language: 'ko',
@@ -74,19 +77,20 @@ export function OnboardingPage() {
       case 1: return name.trim().length > 0;
       case 2: return ageGroup !== '';
       case 3: return occupation !== '';
-      case 4: return interests.length > 0;
+      case 4: return mbti !== '';
+      case 5: return interests.length > 0;
       default: return false;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-white flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Progress Bar */}
         <div className="mb-12">
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
             <motion.div 
-              className="h-full bg-gradient-to-r from-purple-400 to-pink-400"
+              className="h-full bg-gradient-to-r from-indigo-400 to-teal-400"
               initial={{ width: 0 }}
               animate={{ width: `${(step / totalSteps) * 100}%` }}
               transition={{ duration: 0.5 }}
@@ -110,9 +114,9 @@ export function OnboardingPage() {
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4"
                 >
-                  <User className="w-8 h-8 text-purple-500" />
+                  <User className="w-8 h-8 text-indigo-500" />
                 </motion.div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">반가워요!</h2>
                 <p className="text-gray-500">어떻게 불러드리면 될까요?</p>
@@ -123,7 +127,7 @@ export function OnboardingPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="닉네임을 입력해주세요"
-                className="w-full p-4 text-lg text-center border-b-2 border-purple-100 focus:border-purple-400 outline-none bg-transparent transition-colors placeholder:text-gray-300"
+                className="w-full p-4 text-lg text-center border-b-2 border-indigo-100 focus:border-indigo-400 outline-none bg-transparent transition-colors placeholder:text-gray-300"
                 autoFocus
               />
             </motion.div>
@@ -138,11 +142,11 @@ export function OnboardingPage() {
               className="space-y-6"
             >
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-pink-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-pink-500" />
+                <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-teal-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">연령대가 어떻게 되시나요?</h2>
-                <p className="text-gray-500">비슷한 고민을 가진 분들과 연결해드릴게요</p>
+                <p className="text-gray-500">맞춤 분석을 위해 알려주세요</p>
               </div>
 
               <div className="grid grid-cols-1 gap-3">
@@ -152,8 +156,8 @@ export function OnboardingPage() {
                     onClick={() => setAgeGroup(age)}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       ageGroup === age
-                        ? 'border-pink-400 bg-pink-50 text-pink-600 font-medium'
-                        : 'border-gray-100 hover:border-pink-200 text-gray-600'
+                        ? 'border-teal-400 bg-teal-50 text-teal-600 font-medium'
+                        : 'border-gray-100 hover:border-teal-200 text-gray-600'
                     }`}
                   >
                     {age}
@@ -172,8 +176,8 @@ export function OnboardingPage() {
               className="space-y-6"
             >
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Briefcase className="w-8 h-8 text-blue-500" />
+                <div className="w-16 h-16 bg-sky-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Briefcase className="w-8 h-8 text-sky-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">현재 어떤 상황이신가요?</h2>
                 <p className="text-gray-500">당신의 라이프스타일에 맞춰 분석해드려요</p>
@@ -186,8 +190,8 @@ export function OnboardingPage() {
                     onClick={() => setOccupation(job)}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       occupation === job
-                        ? 'border-blue-400 bg-blue-50 text-blue-600 font-medium'
-                        : 'border-gray-100 hover:border-blue-200 text-gray-600'
+                        ? 'border-sky-400 bg-sky-50 text-sky-600 font-medium'
+                        : 'border-gray-100 hover:border-sky-200 text-gray-600'
                     }`}
                   >
                     {job}
@@ -206,8 +210,42 @@ export function OnboardingPage() {
               className="space-y-6"
             >
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Heart className="w-8 h-8 text-rose-500" />
+                <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Brain className="w-8 h-8 text-indigo-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">MBTI가 어떻게 되세요?</h2>
+                <p className="text-gray-500">성격 유형에 맞춘 감정 분석을 제공해요</p>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                {(['INTJ', 'INTP', 'ENTJ', 'ENTP', 'INFJ', 'INFP', 'ENFJ', 'ENFP', 'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP'] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setMbti(type)}
+                    className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                      mbti === type
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-100 hover:border-indigo-200 text-gray-600'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Brain className="w-8 h-8 text-emerald-500" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">요즘 관심사는 무엇인가요?</h2>
                 <p className="text-gray-500">여러 개 선택할 수 있어요</p>
@@ -220,8 +258,8 @@ export function OnboardingPage() {
                     onClick={() => toggleInterest(interest)}
                     className={`px-6 py-3 rounded-full border-2 transition-all ${
                       interests.includes(interest)
-                        ? 'border-rose-400 bg-rose-50 text-rose-600 font-medium'
-                        : 'border-gray-100 hover:border-rose-200 text-gray-600'
+                        ? 'border-emerald-400 bg-emerald-50 text-emerald-600 font-medium'
+                        : 'border-gray-100 hover:border-emerald-200 text-gray-600'
                     }`}
                   >
                     {interest}
@@ -238,7 +276,7 @@ export function OnboardingPage() {
           disabled={!isStepValid()}
           className={`w-full mt-12 py-4 rounded-2xl font-medium text-lg shadow-lg flex items-center justify-center gap-2 transition-all ${
             isStepValid()
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-xl'
+              ? 'bg-gradient-to-r from-indigo-500 to-teal-500 text-white hover:shadow-xl'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
         >

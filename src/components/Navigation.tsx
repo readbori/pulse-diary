@@ -21,7 +21,7 @@ export function Navigation() {
         onClick={() => setIsOpen(true)}
         className="fixed top-4 left-4 z-40 p-3 bg-white/80 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-colors"
       >
-        <Menu className="w-6 h-6 text-violet-600" />
+        <Menu className="w-6 h-6 text-indigo-600" />
       </button>
 
       <AnimatePresence>
@@ -43,7 +43,7 @@ export function Navigation() {
               className="fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 p-6"
             >
               <div className="flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-teal-600 bg-clip-text text-transparent">
                   Pulse Diary
                 </h1>
                 <button
@@ -65,12 +65,12 @@ export function Navigation() {
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-xl transition-all
                         ${isActive 
-                          ? 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700' 
+                          ? 'bg-gradient-to-r from-indigo-100 to-teal-100 text-indigo-700' 
                           : 'text-gray-600 hover:bg-gray-100'
                         }
                       `}
                     >
-                      <item.icon className={`w-5 h-5 ${isActive ? 'text-violet-600' : ''}`} />
+                      <item.icon className={`w-5 h-5 ${isActive ? 'text-indigo-600' : ''}`} />
                       <span className="font-medium">{item.label}</span>
                     </Link>
                   );

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Mic, Heart, BarChart3, Calendar, MessageCircle, Sparkles, ChevronRight, Star, Shield, Zap } from 'lucide-react';
+import { Mic, Activity, BarChart3, Calendar, Brain, Sparkles, ChevronRight, Star, Shield, Zap } from 'lucide-react';
 
 export function LandingPage() {
   return (
@@ -8,17 +8,17 @@ export function LandingPage() {
       <section className="min-h-screen flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl"
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl"
             animate={{ scale: [1, 1.2, 1], x: [0, 30, 0], y: [0, -20, 0] }}
             transition={{ duration: 12, repeat: Infinity }}
           />
           <motion.div
-            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-200/40 rounded-full blur-3xl"
+            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-200/40 rounded-full blur-3xl"
             animate={{ scale: [1.2, 1, 1.2], x: [0, -30, 0], y: [0, 20, 0] }}
             transition={{ duration: 15, repeat: Infinity }}
           />
           <motion.div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-amber-100/30 rounded-full blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-sky-100/30 rounded-full blur-3xl"
             animate={{ scale: [1, 1.1, 1] }}
             transition={{ duration: 8, repeat: Infinity }}
           />
@@ -34,9 +34,9 @@ export function LandingPage() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring' }}
-            className="w-24 h-24 bg-gradient-to-br from-purple-400 via-pink-400 to-rose-300 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-xl rotate-12"
+            className="w-24 h-24 bg-gradient-to-br from-indigo-500 via-teal-500 to-sky-400 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-xl rotate-12"
           >
-            <Heart className="w-12 h-12 text-white -rotate-12" />
+            <Activity className="w-12 h-12 text-white -rotate-12" />
           </motion.div>
 
           <motion.h1
@@ -75,7 +75,7 @@ export function LandingPage() {
           >
             <Link
               to={localStorage.getItem('pulse_user_id') ? "/home" : "/onboarding"}
-              className="w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
+              className="w-full py-4 bg-gradient-to-r from-indigo-500 via-teal-500 to-sky-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5" />
               무료로 시작하기
@@ -114,25 +114,25 @@ export function LandingPage() {
                 icon: Mic,
                 title: '30초면 충분해요',
                 desc: '텍스트로 쓸 필요 없이, 버튼 하나로 음성 기록',
-                color: 'from-purple-400 to-violet-400'
+                color: 'from-indigo-400 to-indigo-500'
               },
               {
-                icon: MessageCircle,
-                title: '지금 바로 상담',
-                desc: '주 5회 무료 AI 상담으로 즉시 마음 케어',
-                color: 'from-pink-400 to-rose-400'
+                icon: Brain,
+                title: 'AI 감정 분석',
+                desc: '음성에서 감정을 읽어 맞춤 인사이트 제공',
+                color: 'from-teal-400 to-teal-500'
               },
               {
                 icon: BarChart3,
                 title: '감정 패턴 발견',
                 desc: 'AI가 분석한 주간 리포트로 나를 이해하기',
-                color: 'from-amber-400 to-orange-400'
+                color: 'from-sky-400 to-sky-500'
               },
               {
                 icon: Shield,
                 title: '완전한 프라이버시',
                 desc: '모든 데이터는 기기에만 저장, 서버 전송 없음',
-                color: 'from-emerald-400 to-teal-400'
+                color: 'from-slate-400 to-slate-500'
               }
             ].map((feature, i) => (
               <motion.div
@@ -156,7 +156,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-gradient-to-b from-transparent to-purple-50/50">
+      <section className="py-20 px-6 bg-gradient-to-b from-transparent to-indigo-50/50">
         <div className="max-w-lg mx-auto text-center">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
@@ -178,16 +178,16 @@ export function LandingPage() {
               <p className="text-3xl font-bold text-gray-800 mb-4">₩0</p>
               <ul className="text-sm text-gray-500 space-y-2 text-left">
                 <li className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-purple-400" />
+                  <Star className="w-4 h-4 text-indigo-400" />
                   무제한 음성 기록
                 </li>
                 <li className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-purple-400" />
+                  <Star className="w-4 h-4 text-indigo-400" />
                   주간 AI 리포트
                 </li>
                 <li className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-purple-400" />
-                  주 5회 즉석 상담
+                  <Star className="w-4 h-4 text-indigo-400" />
+                  주 5회 즉석 분석
                 </li>
               </ul>
             </motion.div>
@@ -197,7 +197,7 @@ export function LandingPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="p-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl text-white relative overflow-hidden"
+              className="p-6 bg-gradient-to-br from-indigo-500 to-teal-500 rounded-2xl text-white relative overflow-hidden"
             >
               <div className="absolute top-2 right-2 bg-white/20 px-2 py-1 rounded-full text-xs">
                 추천
@@ -256,9 +256,9 @@ export function LandingPage() {
           >
             <Link
               to={localStorage.getItem('pulse_user_id') ? "/home" : "/onboarding"}
-              className="inline-flex items-center gap-2 py-4 px-8 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow"
+              className="inline-flex items-center gap-2 py-4 px-8 bg-gradient-to-r from-indigo-500 via-teal-500 to-sky-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow"
             >
-              <Heart className="w-5 h-5" />
+              <Activity className="w-5 h-5" />
               지금 시작하기
             </Link>
           </motion.div>
@@ -266,7 +266,7 @@ export function LandingPage() {
       </section>
 
       <footer className="py-8 px-6 text-center text-gray-400 text-sm">
-        <p>Made with 💜 by Pulse Diary</p>
+        <p>Made with dedication by Pulse Diary</p>
       </footer>
     </div>
   );
