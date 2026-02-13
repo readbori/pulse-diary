@@ -1,31 +1,22 @@
-import Dexie, { type Table } from 'dexie';
+import { db } from '@/lib/dexie';
+import {
+  pushRecord,
+  pushReport,
+  pushProfile,
+  pushSettings,
+  pushStreak,
+  deleteRemoteRecord,
+} from '@/lib/sync';
 import type { EmotionRecord, WeeklyReport, UserSettings, StreakData, UserProfile } from '@/types';
 
-class PulseDiaryDB extends Dexie {
-  records!: Table<EmotionRecord>;
-  reports!: Table<WeeklyReport>;
-  settings!: Table<UserSettings>;
-  streaks!: Table<StreakData>;
-  profiles!: Table<UserProfile>;
-
-  constructor() {
-    super('pulsediary');
-    
-    this.version(1).stores({
-      records: 'id, userId, createdAt',
-      reports: 'id, userId, weekStart',
-      settings: 'userId',
-      streaks: 'userId',
-      profiles: 'userId'
-    });
-  }
-}
-
-export const db = new PulseDiaryDB();
+export { db };
 
 export async function saveRecord(record: Omit<EmotionRecord, 'id'>): Promise<string> {
   const id = crypto.randomUUID();
-  await db.records.add({ ...record, id });
+  const full: EmotionRecord = { ...record, id };
+  await db.records.add(full);
+  // Fire-and-forget cloud sync
+  pushRecord(full).catch(() => {});
   return id;
 }
 
@@ -64,7 +55,9 @@ export async function getAllRecords(userId: string): Promise<EmotionRecord[]> {
 
 export async function saveReport(report: Omit<WeeklyReport, 'id'>): Promise<string> {
   const id = crypto.randomUUID();
-  await db.reports.add({ ...report, id });
+  const full: WeeklyReport = { ...report, id };
+  await db.reports.add(full);
+  pushReport(full).catch(() => {});
   return id;
 }
 
@@ -82,6 +75,7 @@ export async function getSettings(userId: string): Promise<UserSettings | undefi
 
 export async function saveSettings(settings: UserSettings): Promise<void> {
   await db.settings.put(settings);
+  pushSettings(settings).catch(() => {});
 }
 
 export async function getStreak(userId: string): Promise<StreakData | undefined> {
@@ -101,6 +95,7 @@ export async function updateStreak(userId: string): Promise<StreakData> {
       milestones: []
     };
     await db.streaks.add(newStreak);
+    pushStreak(newStreak).catch(() => {});
     return newStreak;
   }
   
@@ -127,11 +122,13 @@ export async function updateStreak(userId: string): Promise<StreakData> {
   }
   
   await db.streaks.put(streak);
+  pushStreak(streak).catch(() => {});
   return streak;
 }
 
 export async function saveProfile(profile: UserProfile): Promise<void> {
   await db.profiles.put(profile);
+  pushProfile(profile).catch(() => {});
 }
 
 export async function getProfile(userId: string): Promise<UserProfile | undefined> {
@@ -140,8 +137,10 @@ export async function getProfile(userId: string): Promise<UserProfile | undefine
 
 export async function updateRecord(record: EmotionRecord): Promise<void> {
   await db.records.put(record);
+  pushRecord(record).catch(() => {});
 }
 
 export async function deleteRecord(id: string): Promise<void> {
   await db.records.delete(id);
+  deleteRemoteRecord(id).catch(() => {});
 }

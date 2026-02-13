@@ -26,10 +26,19 @@ export function setUserTier(tier: UserTier): void {
 }
 
 /**
- * 현재 사용자 ID를 가져옵니다.
+ * 효과적 사용자 ID를 반환합니다.
+ * Supabase 로그인 시 → auth user id (localStorage에 저장됨)
+ * 비로그인 시 → localStorage의 기존 pulse_user_id 또는 'demo-user'
+ */
+export function getEffectiveUserId(): string {
+  return localStorage.getItem(USER_ID_KEY) || 'demo-user';
+}
+
+/**
+ * 현재 사용자 ID를 가져옵니다. (getEffectiveUserId alias)
  */
 export function getUserId(): string {
-  return localStorage.getItem(USER_ID_KEY) || 'demo-user';
+  return getEffectiveUserId();
 }
 
 /**

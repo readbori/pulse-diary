@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Calendar, Trash2, User, FileText, Info, Sparkles, Zap } from 'lucide-react';
+import { Bell, Calendar, Trash2, User, FileText, Info, Sparkles, Zap, Download, Upload } from 'lucide-react';
 import { getSettings, saveSettings, getProfile, saveProfile } from '@/lib/db';
+import { exportBackup, importBackup } from '@/lib/backup';
 import { getUserTier, setUserTier, getAIModelInfo, type UserTier } from '@/lib/user';
 import type { UserSettings, UserProfile } from '@/types';
 
@@ -12,6 +13,9 @@ export function SettingsPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<UserTier>(getUserTier());
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [backupResult, setBackupResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -64,6 +68,55 @@ export function SettingsPage() {
     setUserTier(tier);
     setCurrentTier(tier);
     showToast(`${tier === 'free' ? '무료' : '프리미엄'} 등급으로 전환되었습니다`);
+  };
+
+  const handleExportBackup = async () => {
+    const userId = localStorage.getItem('pulse_user_id');
+    if (!userId) {
+      const errorMessage = '사용자 정보를 찾을 수 없습니다.';
+      setBackupResult({ type: 'error', message: errorMessage });
+      showToast(errorMessage);
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      setBackupResult(null);
+      await exportBackup(userId);
+      const successMessage = '백업 파일이 다운로드되었습니다';
+      setBackupResult({ type: 'success', message: successMessage });
+      showToast(successMessage);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '백업 내보내기에 실패했습니다.';
+      setBackupResult({ type: 'error', message: errorMessage });
+      showToast(errorMessage);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setBackupResult(null);
+      const result = await importBackup(selectedFile);
+      const successMessage = `${result.records}개의 기록과 ${result.reports}개의 리포트를 복구했습니다`;
+      setBackupResult({ type: 'success', message: successMessage });
+      showToast(successMessage);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '백업 가져오기에 실패했습니다.';
+      setBackupResult({ type: 'error', message: errorMessage });
+      showToast(errorMessage);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   if (loading) {
@@ -280,6 +333,53 @@ export function SettingsPage() {
                 30일이 지난 오디오 파일은 자동으로 삭제됩니다. (텍스트는 유지)
               </p>
             )}
+
+            <div className="pt-4 mt-4 border-t border-gray-100 space-y-3">
+              <p className="text-sm font-medium text-gray-700">백업 및 복구</p>
+              <p className="text-xs text-gray-400">
+                모든 감정 기록, 리포트, 설정을 JSON 파일로 내보내거나 복구할 수 있습니다.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleExportBackup}
+                  disabled={isExporting || isImporting}
+                  className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isExporting ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  내보내기
+                </button>
+
+                <label
+                  className="flex-1 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors bg-teal-50 text-teal-600 hover:bg-teal-100 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isImporting ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  가져오기
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    disabled={isExporting || isImporting}
+                    onChange={handleImport}
+                  />
+                </label>
+              </div>
+
+              {backupResult && (
+                <p
+                  className={`text-xs ${backupResult.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}
+                >
+                  {backupResult.message}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
