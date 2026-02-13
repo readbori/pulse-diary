@@ -6,6 +6,7 @@ import {
   pushSettings,
   pushStreak,
   deleteRemoteRecord,
+  deleteRemoteReport,
 } from '@/lib/sync';
 import type { EmotionRecord, WeeklyReport, UserSettings, StreakData, UserProfile } from '@/types';
 
@@ -67,6 +68,11 @@ export async function getReports(userId: string): Promise<WeeklyReport[]> {
     .equals(userId)
     .reverse()
     .sortBy('createdAt');
+}
+
+export async function deleteReport(reportId: string): Promise<void> {
+  await db.reports.delete(reportId);
+  deleteRemoteReport(reportId).catch(() => {});
 }
 
 export async function getSettings(userId: string): Promise<UserSettings | undefined> {
@@ -143,4 +149,46 @@ export async function updateRecord(record: EmotionRecord): Promise<void> {
 export async function deleteRecord(id: string): Promise<void> {
   await db.records.delete(id);
   deleteRemoteRecord(id).catch(() => {});
+}
+
+/** 로컬 유저 → Google 연동 시 모든 데이터의 userId를 마이그레이션 */
+export async function migrateUserData(oldUserId: string, newUserId: string): Promise<void> {
+  if (oldUserId === newUserId) return;
+
+  await db.transaction('rw', [db.records, db.reports, db.settings, db.streaks, db.profiles], async () => {
+    // 감정 기록 마이그레이션
+    const records = await db.records.where('userId').equals(oldUserId).toArray();
+    for (const record of records) {
+      await db.records.update(record.id, { userId: newUserId });
+    }
+
+    // 리포트 마이그레이션
+    const reports = await db.reports.where('userId').equals(oldUserId).toArray();
+    for (const report of reports) {
+      await db.reports.update(report.id, { userId: newUserId });
+    }
+
+    // 프로필 마이그레이션 (PK = userId이므로 delete + put)
+    const profile = await db.profiles.get(oldUserId);
+    if (profile) {
+      await db.profiles.delete(oldUserId);
+      await db.profiles.put({ ...profile, userId: newUserId, updatedAt: new Date() });
+    }
+
+    // 설정 마이그레이션
+    const settings = await db.settings.get(oldUserId);
+    if (settings) {
+      await db.settings.delete(oldUserId);
+      await db.settings.put({ ...settings, userId: newUserId });
+    }
+
+    // 스트릭 마이그레이션
+    const streak = await db.streaks.get(oldUserId);
+    if (streak) {
+      await db.streaks.delete(oldUserId);
+      await db.streaks.put({ ...streak, userId: newUserId });
+    }
+  });
+
+  console.log(`[DB] Migrated ${oldUserId} → ${newUserId}`);
 }
