@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles, Crown, ArrowRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles, Crown, ArrowRight, Heart, Star, Lightbulb, TrendingUp, FileText } from 'lucide-react';
 import { EmotionIcon } from '@/components/EmotionIcon';
 import { useNavigate } from 'react-router-dom';
-import { getRecordsByDateRange, deleteRecord, updateRecord, saveReport, getReports } from '@/lib/db';
+import { getRecordsByDateRange, deleteRecord, updateRecord, saveReport, getReports, getProfile } from '@/lib/db';
 import { getMonthHolidays, type HolidayInfo } from '@/lib/holidays';
 import { getEmotionDotColor, getEmotionGradient, getEmotionColor, getEmotionLabel, normalizeEmotion } from '@/lib/emotions';
 import { generateReport } from '@/lib/ai';
 import { getUserTier } from '@/lib/user';
-import type { EmotionRecord } from '@/types';
+import type { EmotionRecord, UserProfile } from '@/types';
 
 export function HistoryPage() {
   const navigate = useNavigate();
@@ -171,8 +171,9 @@ export function HistoryPage() {
       
       if (selectedRecords.length === 0) return;
       
+      const profile = await getProfile(userId) ?? undefined;
       const dateLabel = `선택한 ${selectedDates.size}일 분석`;
-      const reportData = await generateReport(userId, selectedRecords, dateLabel);
+      const reportData = await generateReport(userId, selectedRecords, dateLabel, profile);
       setAnalysisResult(reportData.content);
       
       // 리포트 저장 (선택 사항)
@@ -204,8 +205,9 @@ export function HistoryPage() {
       try {
         const userId = localStorage.getItem('pulse_user_id');
         if (!userId) return;
+        const profile = await getProfile(userId) ?? undefined;
         const dateLabel = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 분석`;
-        const reportData = await generateReport(userId, currentDateRecords, dateLabel);
+        const reportData = await generateReport(userId, currentDateRecords, dateLabel, profile);
         setAnalysisResult(reportData.content);
         await saveReport(reportData);
       } catch (error) {
@@ -358,10 +360,10 @@ export function HistoryPage() {
             <button
               onClick={handleAnalyze}
               disabled={isAnalyzing}
-              className="flex items-center gap-1.5 px-3 py-2 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 bg-teal-50 text-teal-700 rounded-xl text-sm font-medium hover:bg-teal-100 transition-colors disabled:opacity-50"
             >
               {isAnalyzing ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
               ) : (
                 <Sparkles className="w-4 h-4" />
               )}
@@ -369,7 +371,7 @@ export function HistoryPage() {
             </button>
             <button
               onClick={handleRecordNow}
-              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500 text-white rounded-xl text-sm font-medium hover:bg-indigo-600 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-colors"
             >
               <Mic className="w-4 h-4" />
               녹음하기
@@ -574,26 +576,54 @@ export function HistoryPage() {
                 <div className="space-y-4">
                   {analysisResult.summary && (
                     <div className="bg-indigo-50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-indigo-700 mb-1">감정 요약</h4>
-                      <p className="text-sm text-gray-700">{analysisResult.summary}</p>
+                      <h4 className="text-sm font-semibold text-indigo-700 mb-2 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5" />
+                        감정 요약
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{analysisResult.summary}</p>
                     </div>
                   )}
                   {analysisResult.patterns && (
                     <div className="bg-teal-50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-teal-700 mb-1">감정 패턴</h4>
-                      <p className="text-sm text-gray-700">{analysisResult.patterns}</p>
+                      <h4 className="text-sm font-semibold text-teal-700 mb-2 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        감정 패턴
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{analysisResult.patterns}</p>
                     </div>
                   )}
                   {analysisResult.empathy && (
                     <div className="bg-amber-50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-amber-700 mb-1">위로의 말</h4>
-                      <p className="text-sm text-gray-700">{analysisResult.empathy}</p>
+                      <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-1.5">
+                        <Heart className="w-3.5 h-3.5" />
+                        위로의 말
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{analysisResult.empathy}</p>
+                    </div>
+                  )}
+                  {analysisResult.positives && (
+                    <div className="bg-pink-50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-pink-700 mb-2 flex items-center gap-1.5">
+                        <Star className="w-3.5 h-3.5" />
+                        긍정적 발견
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{analysisResult.positives}</p>
                     </div>
                   )}
                   {analysisResult.suggestions && (
                     <div className="bg-emerald-50 rounded-xl p-4">
-                      <h4 className="text-sm font-semibold text-emerald-700 mb-1">제안</h4>
-                      <p className="text-sm text-gray-700">{analysisResult.suggestions}</p>
+                      <h4 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        제안
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{analysisResult.suggestions}</p>
+                    </div>
+                  )}
+                  {analysisResult.quote && (
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                      <p className="text-sm text-gray-600 leading-relaxed italic text-center">
+                        "{analysisResult.quote}"
+                      </p>
                     </div>
                   )}
 

@@ -61,6 +61,7 @@ export interface WeeklyReport {
     empathy: string;
     positives: string;
     suggestions: string;
+    quote?: string;
   };
   aiModel: 'haiku' | 'sonnet' | 'gpt-4o-mini' | 'oss-120b';
   createdAt: Date;

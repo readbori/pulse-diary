@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Sparkles, Settings, ArrowRight, Calendar } from 'lucide-react';
+import { FileText, Sparkles, Settings, ArrowRight, Calendar, Heart, Lightbulb } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getReports, getAllRecords, saveReport } from '@/lib/db';
+import { getReports, getAllRecords, saveReport, getProfile } from '@/lib/db';
 import { generateReport } from '@/lib/ai';
 import type { WeeklyReport } from '@/types';
 
@@ -43,10 +43,11 @@ export function ReportsPage() {
       const records = await getAllRecords(userId);
       if (records.length === 0) throw new Error('No records');
       
+      const profile = await getProfile(userId) ?? undefined;
       const now = new Date();
       const dateLabel = `${now.getFullYear()}년 ${now.getMonth() + 1}월 분석`;
       
-      const reportData = await generateReport(userId, records, dateLabel);
+      const reportData = await generateReport(userId, records, dateLabel, profile);
       const reportId = await saveReport(reportData);
       
       // Reload reports list
@@ -175,22 +176,38 @@ export function ReportsPage() {
                   <div className="space-y-3">
                     {report.content.summary && (
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">감정 요약</h3>
-                        <p className="text-gray-700 text-sm">{report.content.summary}</p>
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                          <FileText className="w-3 h-3" />
+                          감정 요약
+                        </h3>
+                        <p className="text-gray-700 text-sm leading-relaxed">{report.content.summary}</p>
                       </div>
                     )}
                     
                     {report.content.empathy && (
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">위로의 말</h3>
-                        <p className="text-gray-700 text-sm">{report.content.empathy}</p>
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                          <Heart className="w-3 h-3" />
+                          위로의 말
+                        </h3>
+                        <p className="text-gray-700 text-sm leading-relaxed">{report.content.empathy}</p>
                       </div>
                     )}
 
                     {report.content.suggestions && (
                       <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">다음 주 제안</h3>
-                        <p className="text-gray-700 text-sm">{report.content.suggestions}</p>
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                          <Lightbulb className="w-3 h-3" />
+                          제안
+                        </h3>
+                        <p className="text-gray-700 text-sm leading-relaxed">{report.content.suggestions}</p>
+                      </div>
+                    )}
+                    {report.content.quote && (
+                      <div className="pt-2 border-t border-gray-100">
+                        <p className="text-xs text-gray-500 italic text-center leading-relaxed">
+                          "{report.content.quote}"
+                        </p>
                       </div>
                     )}
                   </div>

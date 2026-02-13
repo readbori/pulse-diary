@@ -106,7 +106,7 @@ export function HomePage() {
     
     try {
       const userId = localStorage.getItem('pulse_user_id') || DEMO_USER_ID;
-      const emotions = await analyzeEmotion(transcript);
+      const emotions = await analyzeEmotion(transcript, profile ?? undefined);
       
       await saveRecord({
         userId,
@@ -261,6 +261,7 @@ export function HomePage() {
             onReset={handleResetRecording}
             hasRecording={!!audioBlob}
             onSave={() => setShowModal(true)}
+            recentEmotion={recentEmotion ?? undefined}
           />
         </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Square, RotateCcw, Check } from 'lucide-react';
+import { getEmotionGradient } from '@/lib/emotions';
 
 interface RecordButtonProps {
   isRecording: boolean;
@@ -10,6 +11,7 @@ interface RecordButtonProps {
   onReset: () => void;
   hasRecording: boolean;
   onSave: () => void;
+  recentEmotion?: string;
 }
 
 export function RecordButton({
@@ -19,7 +21,8 @@ export function RecordButton({
   onStop,
   onReset,
   hasRecording,
-  onSave
+  onSave,
+  recentEmotion
 }: RecordButtonProps) {
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -67,7 +70,7 @@ export function RecordButton({
                 transition-all duration-500 soft-shadow
                 ${isRecording 
                   ? 'bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 animate-pulse-ring' 
-                  : 'bg-gradient-to-br from-indigo-500 via-teal-500 to-sky-400 hover:from-indigo-600 hover:via-teal-600 hover:to-sky-500'
+                  : `bg-gradient-to-br ${recentEmotion ? getEmotionGradient(recentEmotion) : 'from-indigo-500 via-teal-500 to-sky-400'} ${!recentEmotion ? 'hover:from-indigo-600 hover:via-teal-600 hover:to-sky-500' : ''}`
                 }
               `}
             >

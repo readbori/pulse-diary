@@ -1,8 +1,9 @@
-import type { EmotionType, WeeklyReport, EmotionRecord } from '@/types';
+import type { EmotionType, WeeklyReport, EmotionRecord, UserProfile } from '@/types';
 import { getUserTier } from '@/lib/user';
 import { ALL_EMOTIONS } from '@/lib/emotions';
 import { COUNSELOR_PERSONA, ANALYSIS_PERSONA } from '@/lib/persona';
 import { buildSessionContext } from '@/lib/counseling';
+import { getQuoteForEmotions } from '@/lib/quotes';
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
@@ -16,9 +17,18 @@ export interface EmotionAnalysis {
 
 const EMOTION_LIST = ALL_EMOTIONS.join(', ');
 
-const EMOTION_PROMPT = `다음 텍스트의 감정을 분석해주세요. 반드시 아래 JSON 형식만 반환하세요. 다른 텍스트는 포함하지 마세요.
+function buildEmotionPrompt(transcript: string, profile?: UserProfile): string {
+  let profileContext = '';
+  if (profile?.mbti || profile?.occupation) {
+    const parts: string[] = [];
+    if (profile.mbti) parts.push(`MBTI 유형: ${profile.mbti}`);
+    if (profile.occupation) parts.push(`직업: ${profile.occupation}`);
+    profileContext = `\n\n사용자 정보:\n${parts.join('\n')}\n위 정보를 참고하여 해당 성격 유형과 직업 특성에 맞게 감정을 더 정밀하게 분석해주세요.`;
+  }
 
-텍스트: "{transcript}"
+  return `다음 텍스트의 감정을 분석해주세요. 반드시 아래 JSON 형식만 반환하세요. 다른 텍스트는 포함하지 마세요.
+
+텍스트: "${transcript}"${profileContext}
 
 사용 가능한 감정 목록:
 ${EMOTION_LIST}
@@ -53,14 +63,19 @@ JSON 형식:
 - scores의 각 값은 0.0~1.0 사이
 - 상위 2~3개 감정에 높은 점수, 나머지는 0.0
 - JSON만 반환, 설명 없음`;
+}
 
 // ─── 리포트 생성 프롬프트 ───
 
 // ─── 티어별 리포트 프롬프트 생성 ───
 
-function buildReportPrompt(records: string, isPremium: boolean): string {
+function buildReportPrompt(records: string, isPremium: boolean, profile?: UserProfile): string {
+  const profileBlock = (profile?.mbti || profile?.occupation)
+    ? `\n\n사용자 프로필:\n${profile.mbti ? `- MBTI: ${profile.mbti}` : ''}${profile.occupation ? `\n- 직업: ${profile.occupation}` : ''}\n위 프로필을 고려하여 성격 유형과 직업 특성에 맞는 맞춤형 분석을 제공하세요.\n`
+    : '';
+
   if (isPremium) {
-    return `다음은 사용자의 감정 기록들입니다. 전문 심리 상담가의 관점에서 깊이 있는 분석 리포트를 작성해주세요.
+    return `다음은 사용자의 감정 기록들입니다. 전문 심리 상담가의 관점에서 깊이 있는 분석 리포트를 작성해주세요.${profileBlock}
 
 기록 데이터:
 ${records}
@@ -71,7 +86,8 @@ ${records}
   "patterns": "감정 패턴 심층 분석 (5-8문장). 반복되는 감정, 트리거 상황, 감정 간 연관성을 분석하세요. '감정 조절 이론(Gross의 과정모델)', '정서 도식(emotion schema)' 등 학술적 프레임워크를 활용하여 패턴을 설명해주세요.",
   "empathy": "공감과 위로의 말 (5-8문장). 사용자의 구체적 경험을 언급하며 진심어린 공감을 표현하세요. 로저스(Rogers)의 무조건적 긍정적 존중의 태도로 작성하세요. 사용자가 느꼈을 감정의 타당성을 충분히 인정해주세요.",
   "positives": "긍정적 발견과 성장 포인트 (5-8문장). 감정을 기록하는 행위 자체의 심리학적 가치(표현적 글쓰기 효과, Pennebaker 연구), 발견된 심리적 강점(resilience), 그리고 성장의 근거를 구체적으로 제시하세요.",
-  "suggestions": "전문가 수준 실천 제안 (5-8문장). 마음챙김(mindfulness), 감사 일기, 인지 재구성(cognitive restructuring) 등 근거 기반 기법을 구체적 실천 방법과 함께 2-3가지 제안하세요. 각 제안에 왜 효과적인지 간단한 학술적 근거를 덧붙이세요."
+  "suggestions": "전문가 수준 실천 제안 (5-8문장). 마음챙김(mindfulness), 감사 일기, 인지 재구성(cognitive restructuring) 등 근거 기반 기법을 구체적 실천 방법과 함께 2-3가지 제안하세요. 각 제안에 왜 효과적인지 간단한 학술적 근거를 덧붙이세요.",
+  "quote": "사용자의 현재 감정 상태에 적합한 한 줄 명언 또는 심리학적 인용구. 저자를 포함하세요 (예: '감정을 느끼는 것은 살아있다는 증거입니다. — Carl Rogers'). 사용자의 주요 감정에 공감하면서도 성장을 격려하는 내용이어야 합니다."
 }
 
 규칙:
@@ -82,7 +98,7 @@ ${records}
 - JSON만 반환`;
   }
 
-  return `다음은 사용자의 감정 기록들입니다. 이를 분석하여 리포트를 작성해주세요.
+  return `다음은 사용자의 감정 기록들입니다. 이를 분석하여 리포트를 작성해주세요.${profileBlock}
 
 기록 데이터:
 ${records}
@@ -93,7 +109,8 @@ ${records}
   "patterns": "감정 패턴 분석 (3-5문장). 반복되는 감정, 트리거 상황, 감정 변화의 방향성을 분석해주세요.",
   "empathy": "공감과 위로의 말 (3-5문장). 사용자의 감정 경험에 진심으로 공감하고 따뜻한 위로를 전해주세요.",
   "positives": "긍정적인 부분 발견 (3-5문장). 칭찬할 포인트와 성장 가능성을 구체적으로 이야기해주세요.",
-  "suggestions": "실천 가능한 제안 (3-5문장). 일상에서 바로 적용할 수 있는 구체적 행동 2가지를 제안해주세요."
+  "suggestions": "실천 가능한 제안 (3-5문장). 일상에서 바로 적용할 수 있는 구체적 행동 2가지를 제안해주세요.",
+  "quote": "사용자의 감정에 공감하는 짧은 명언 한 줄. 저자 포함 (예: '오늘 하루도 충분히 잘했어요. — 마음 길잡이')"
 }
 
 규칙:
@@ -105,7 +122,7 @@ ${records}
 
 // ─── 감정 분석 메인 함수 ───
 
-export async function analyzeEmotion(transcript: string): Promise<EmotionAnalysis> {
+export async function analyzeEmotion(transcript: string, profile?: UserProfile): Promise<EmotionAnalysis> {
   if (!transcript.trim()) {
     return mockAnalysis(transcript);
   }
@@ -115,7 +132,7 @@ export async function analyzeEmotion(transcript: string): Promise<EmotionAnalysi
   if ((tier === 'premium' || tier === 'advanced') && OPENAI_API_KEY) {
     try {
       console.log('[AI] Premium - OpenAI GPT-4o-mini');
-      return await callLLM(transcript, 'openai');
+      return await callLLM(transcript, 'openai', profile);
     } catch (error) {
       console.warn('[AI] OpenAI 실패, fallback:', error);
     }
@@ -124,7 +141,7 @@ export async function analyzeEmotion(transcript: string): Promise<EmotionAnalysi
   if (OPENROUTER_API_KEY) {
     try {
       console.log('[AI] Free - OpenRouter OSS-120b');
-      return await callLLM(transcript, 'openrouter');
+      return await callLLM(transcript, 'openrouter', profile);
     } catch (error) {
       console.warn('[AI] OpenRouter 실패, mock 사용:', error);
     }
@@ -139,7 +156,8 @@ export async function analyzeEmotion(transcript: string): Promise<EmotionAnalysi
 export async function generateReport(
   userId: string,
   records: EmotionRecord[],
-  dateLabel: string
+  dateLabel: string,
+  profile?: UserProfile
 ): Promise<Omit<WeeklyReport, 'id'>> {
   const tier = getUserTier();
 
@@ -172,7 +190,7 @@ export async function generateReport(
   try {
     const isPremium = tier === 'premium' || tier === 'advanced';
     const provider = isPremium && OPENAI_API_KEY ? 'openai' : 'openrouter';
-    content = await callReportLLM(recordSummaries, provider, sessionContext, isPremium);
+    content = await callReportLLM(recordSummaries, provider, sessionContext, isPremium, profile);
   } catch (error) {
     console.warn('[AI] 리포트 생성 실패, 기본 리포트 사용:', error);
     content = {
@@ -181,7 +199,15 @@ export async function generateReport(
       empathy: '꾸준히 감정을 기록하는 것 자체가 대단한 일이에요.',
       positives: '매일 자신의 감정을 돌아보는 습관을 가지고 계시네요!',
       suggestions: '오늘도 잠시 멈추고 나의 마음을 들여다보는 시간을 가져보세요.',
+      quote: '감정을 기록하는 것은 자기 이해의 첫걸음입니다. — James Pennebaker',
     };
+  }
+
+  if (!content.quote?.trim()) {
+    const primaryEmotions = records
+      .map((record) => record.emotions?.primary)
+      .filter((emotion): emotion is EmotionType => Boolean(emotion));
+    content.quote = getQuoteForEmotions(primaryEmotions);
   }
 
   const now = new Date();
@@ -202,8 +228,12 @@ export async function generateReport(
 
 // ─── LLM 호출 (공통) ───
 
-async function callLLM(transcript: string, provider: 'openai' | 'openrouter'): Promise<EmotionAnalysis> {
-  const prompt = EMOTION_PROMPT.replace('{transcript}', transcript);
+async function callLLM(
+  transcript: string,
+  provider: 'openai' | 'openrouter',
+  profile?: UserProfile
+): Promise<EmotionAnalysis> {
+  const prompt = buildEmotionPrompt(transcript, profile);
 
   const { url, headers, body } = provider === 'openai'
     ? {
@@ -261,12 +291,13 @@ async function callReportLLM(
   recordSummaries: string,
   provider: 'openai' | 'openrouter',
   sessionContext?: string,
-  isPremium: boolean = false
+  isPremium: boolean = false,
+  profile?: UserProfile
 ): Promise<WeeklyReport['content']> {
   const contextBlock = sessionContext
     ? `\n\n참고할 사용자 히스토리:\n${sessionContext}`
     : '';
-  const prompt = buildReportPrompt(recordSummaries, isPremium) + contextBlock;
+  const prompt = buildReportPrompt(recordSummaries, isPremium, profile) + contextBlock;
 
   const { url, headers, body } = provider === 'openai'
     ? {
@@ -328,6 +359,7 @@ async function callReportLLM(
     empathy: parsed.empathy || '',
     positives: parsed.positives || '',
     suggestions: parsed.suggestions || '',
+    quote: parsed.quote || '',
   };
 }
 

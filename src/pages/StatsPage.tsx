@@ -9,7 +9,6 @@ import { emotionLabels, emotionDotColors, emotionGradients, getEmotionLabel, get
 import { EmotionIcon } from '@/components/EmotionIcon';
 import type { EmotionRecord, StreakData, EmotionType } from '@/types';
 
-const CHART_COLORS = ['#6366F1', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
 
 export function StatsPage() {
   const navigate = useNavigate();
@@ -206,7 +205,7 @@ export function StatsPage() {
                     dataKey="value"
                   >
                     {emotionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                 </PieChart>
@@ -216,7 +215,7 @@ export function StatsPage() {
                   <div key={item.emotion} className="flex items-center gap-2">
                     <div 
                       className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      style={{ backgroundColor: item.color }}
                     />
                     <span className="text-sm text-gray-600">{item.name}</span>
                     <span className="text-xs text-gray-400 ml-auto">{item.value}회</span>
