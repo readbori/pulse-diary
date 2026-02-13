@@ -1,4 +1,31 @@
-export type EmotionType = 'joy' | 'sadness' | 'anger' | 'fear' | 'surprise' | 'neutral';
+export type EmotionType =
+  // 긍정 감정
+  | 'happiness'    // 행복
+  | 'gratitude'    // 감사
+  | 'excitement'   // 설렘
+  | 'calm'         // 평온
+  | 'hope'         // 희망
+  | 'pride'        // 자부심
+  // 부정 감정
+  | 'sadness'      // 슬픔
+  | 'loneliness'   // 외로움
+  | 'anger'        // 분노
+  | 'irritation'   // 짜증
+  | 'anxiety'      // 불안
+  | 'fear'         // 공포
+  | 'shame'        // 부끄러움
+  | 'disgust'      // 혐오
+  // 중립/복합 감정
+  | 'surprise'     // 놀람
+  | 'confusion'    // 혼란
+  | 'boredom'      // 지루함
+  | 'nostalgia';   // 그리움
+
+/** 기존 6감정 → 신규 18감정 매핑 (하위 호환용) */
+export const LEGACY_EMOTION_MAP: Record<string, EmotionType> = {
+  joy: 'happiness',
+  neutral: 'calm',
+};
 
 export type MBTIType = 
   | 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP'
@@ -35,7 +62,7 @@ export interface WeeklyReport {
     positives: string;
     suggestions: string;
   };
-  aiModel: 'haiku' | 'sonnet';
+  aiModel: 'haiku' | 'sonnet' | 'gpt-4o-mini' | 'oss-120b';
   createdAt: Date;
 }
 

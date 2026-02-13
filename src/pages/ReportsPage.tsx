@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Sparkles, Settings, ArrowRight, Calendar } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { getReports, getAllRecords } from '@/lib/db';
+import { getReports, getAllRecords, saveReport } from '@/lib/db';
+import { generateReport } from '@/lib/ai';
 import type { WeeklyReport } from '@/types';
 
 export function ReportsPage() {
@@ -31,13 +32,32 @@ export function ReportsPage() {
     setLoading(false);
   };
 
-  const handleCheckNow = () => {
+  const handleCheckNow = async () => {
     setShowAnalysisModal(true);
     setIsAnalyzing(true);
     
-    setTimeout(() => {
+    try {
+      const userId = localStorage.getItem('pulse_user_id');
+      if (!userId) throw new Error('No user ID');
+      
+      const records = await getAllRecords(userId);
+      if (records.length === 0) throw new Error('No records');
+      
+      const now = new Date();
+      const dateLabel = `${now.getFullYear()}년 ${now.getMonth() + 1}월 분석`;
+      
+      const reportData = await generateReport(userId, records, dateLabel);
+      const reportId = await saveReport(reportData);
+      
+      // Reload reports list
+      const updatedReports = await getReports(userId);
+      setReports(updatedReports);
+      
       setIsAnalyzing(false);
-    }, 3000);
+    } catch (error) {
+      console.error('분석 실패:', error);
+      setIsAnalyzing(false);
+    }
   };
 
   const formatDateRange = (start: Date, end: Date) => {
@@ -232,9 +252,9 @@ export function ReportsPage() {
                   <h3 className="text-xl font-bold text-gray-800 mb-2">
                     분석이 완료되었습니다!
                   </h3>
-                  <p className="text-gray-500 mb-6">
-                    (데모 버전에서는 실제 분석이 수행되지 않습니다)
-                  </p>
+                   <p className="text-gray-500 mb-6">
+                     AI가 감정 기록을 분석했어요!
+                   </p>
                   <button
                     onClick={() => setShowAnalysisModal(false)}
                     className="w-full py-3 bg-indigo-500 text-white rounded-xl font-medium hover:bg-indigo-600 transition-colors"

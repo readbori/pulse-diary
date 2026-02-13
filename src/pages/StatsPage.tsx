@@ -4,7 +4,7 @@ import { BarChart3, TrendingUp, Calendar, Flame, ArrowRight } from 'lucide-react
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { getAllRecords, getStreak } from '@/lib/db';
-import { emotionIcons, emotionLabels, emotionColors } from '@/lib/emotions';
+import { emotionLabels, emotionDotColors, getEmotionLabel, getEmotionDotColor, normalizeEmotion } from '@/lib/emotions';
 import type { EmotionRecord, StreakData, EmotionType } from '@/types';
 
 const CHART_COLORS = ['#6366F1', '#14B8A6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
@@ -52,16 +52,17 @@ export function StatsPage() {
   const getEmotionDistribution = () => {
     const distribution: Record<string, number> = {};
     records.forEach(r => {
-      const emotion = r.emotions?.primary || 'neutral';
+      const raw = r.emotions?.primary || 'calm';
+      const emotion = normalizeEmotion(raw) || 'calm';
       distribution[emotion] = (distribution[emotion] || 0) + 1;
     });
     
     return Object.entries(distribution)
       .map(([emotion, count]) => ({
-        name: emotionLabels[emotion as EmotionType] || emotion,
+        name: getEmotionLabel(emotion),
         value: count,
         emotion: emotion as EmotionType,
-        icon: emotionIcons[emotion as EmotionType] || '💭'
+        color: getEmotionDotColor(emotion),
       }))
       .sort((a, b) => b.value - a.value);
   };
@@ -168,7 +169,7 @@ export function StatsPage() {
           >
             <p className="text-sm opacity-80 mb-2">가장 많이 느낀 감정</p>
             <div className="flex items-center gap-3">
-              <span className="text-4xl">{mostFrequent.icon}</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br shadow-inner" style={{ backgroundColor: mostFrequent.color }} />
               <div>
                 <p className="text-xl font-bold">{mostFrequent.name}</p>
                 <p className="text-sm opacity-80">{mostFrequent.value}번 기록됨</p>
@@ -212,7 +213,7 @@ export function StatsPage() {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                     />
-                    <span className="text-sm text-gray-600">{item.icon} {item.name}</span>
+                    <span className="text-sm text-gray-600">{item.name}</span>
                     <span className="text-xs text-gray-400 ml-auto">{item.value}회</span>
                   </div>
                 ))}
@@ -299,9 +300,10 @@ export function StatsPage() {
                   onClick={() => navigate('/history')}
                   className="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left"
                 >
-                  <span className="text-xl">
-                    {emotionIcons[record.emotions?.primary || 'neutral'] || '💭'}
-                  </span>
+                  <div
+                    className="w-7 h-7 rounded-full shrink-0 shadow-sm"
+                    style={{ backgroundColor: getEmotionDotColor(record.emotions?.primary) }}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-700 truncate">{record.transcript}</p>
                     <p className="text-xs text-gray-400">
