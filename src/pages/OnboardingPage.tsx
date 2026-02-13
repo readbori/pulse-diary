@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, Check, User, Briefcase, Brain, Calendar } from 'lucide-react';
 import { saveProfile, saveSettings } from '@/lib/db';
+import { useAuth } from '@/contexts/AuthContext';
 import type { UserProfile, UserSettings, MBTIType } from '@/types';
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [ageGroup, setAgeGroup] = useState('');
@@ -25,7 +27,8 @@ export function OnboardingPage() {
   };
 
   const completeOnboarding = async () => {
-    const userId = crypto.randomUUID();
+    // Google 로그인 유저면 Supabase ID 사용, 아니면 랜덤 UUID
+    const userId = user?.id || crypto.randomUUID();
     const now = new Date();
 
     const profile: UserProfile = {
@@ -58,8 +61,10 @@ export function OnboardingPage() {
     await saveProfile(profile);
     await saveSettings(settings);
     
-    // Store userId in localStorage for simple session management
+    // Store userId + auth type in localStorage
     localStorage.setItem('pulse_user_id', userId);
+    localStorage.setItem('pulse_auth_type', user ? 'google' : 'local');
+    localStorage.setItem('pulse_onboarded', 'true');
     
     navigate('/home');
   };

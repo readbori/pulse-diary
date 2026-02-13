@@ -17,7 +17,7 @@ export function LoginPage() {
   };
 
   const handleSkip = () => {
-    navigate('/home');
+    navigate('/onboarding');
   };
 
   return (
@@ -78,7 +78,7 @@ export function LoginPage() {
             onClick={handleSkip}
             className="w-full py-3 text-sm text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 transition-colors"
           >
-            로그인 없이 사용하기
+            먼저 둘러보기
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

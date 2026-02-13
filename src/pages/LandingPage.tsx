@@ -74,7 +74,7 @@ export function LandingPage() {
             className="flex flex-col gap-4"
           >
             <Link
-              to={localStorage.getItem('pulse_user_id') ? "/home" : "/onboarding"}
+              to={localStorage.getItem('pulse_user_id') ? "/home" : "/login"}
               className="w-full py-4 bg-gradient-to-r from-indigo-500 via-teal-500 to-sky-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5" />
@@ -255,7 +255,7 @@ export function LandingPage() {
             viewport={{ once: true }}
           >
             <Link
-              to={localStorage.getItem('pulse_user_id') ? "/home" : "/onboarding"}
+              to={localStorage.getItem('pulse_user_id') ? "/home" : "/login"}
               className="inline-flex items-center gap-2 py-4 px-8 bg-gradient-to-r from-indigo-500 via-teal-500 to-sky-400 text-white rounded-2xl font-medium text-lg shadow-lg hover:shadow-xl transition-shadow"
             >
               <Activity className="w-5 h-5" />

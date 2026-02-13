@@ -1,12 +1,16 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Calendar, Trash2, User, FileText, Info, Sparkles, Zap, Download, Upload } from 'lucide-react';
+import { Bell, Calendar, Trash2, User, FileText, Info, Sparkles, Zap, Download, Upload, Shield, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getSettings, saveSettings, getProfile, saveProfile } from '@/lib/db';
 import { exportBackup, importBackup } from '@/lib/backup';
+import { useAuth } from '@/contexts/AuthContext';
 import { getUserTier, setUserTier, getAIModelInfo, type UserTier } from '@/lib/user';
 import type { UserSettings, UserProfile } from '@/types';
 
 export function SettingsPage() {
+  const { user, linkGoogleAccount, signOut } = useAuth();
+  const navigate = useNavigate();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +19,31 @@ export function SettingsPage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
   const [backupResult, setBackupResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const isLocalUser = !user && localStorage.getItem('pulse_auth_type') !== 'google';
+
+  const handleLinkGoogle = async () => {
+    try {
+      setIsLinking(true);
+      await linkGoogleAccount();
+    } catch (error) {
+      console.error('Google 연동 실패:', error);
+      showToast('연동에 실패했습니다. 다시 시도해주세요.');
+      setIsLinking(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      showToast('로그아웃에 실패했습니다.');
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -136,6 +164,40 @@ export function SettingsPage() {
       </header>
 
       <main className="p-4 space-y-4">
+        {isLocalUser && (
+          <section className="bg-gradient-to-r from-indigo-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-indigo-100/50">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Shield className="w-5 h-5 text-indigo-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">데이터를 안전하게 보관하세요</h3>
+                <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                  구글 계정을 연동하면 기록이 클라우드에 자동 백업됩니다.
+                  기기를 변경해도 데이터가 유지돼요.
+                </p>
+                <button
+                  onClick={handleLinkGoogle}
+                  disabled={isLinking}
+                  className="w-full py-2.5 bg-white rounded-xl text-sm font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {isLinking ? (
+                    <span className="w-4 h-4 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                    </svg>
+                  )}
+                  구글 계정 연동하기
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="bg-white rounded-2xl p-5 shadow-sm">
           <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-indigo-500" />
@@ -446,11 +508,40 @@ export function SettingsPage() {
             <div className="pt-3 border-t border-gray-100">
               <p className="text-xs text-gray-400 leading-relaxed">
                 Pulse Diary는 사용자의 개인정보를 소중히 다룹니다.
-                모든 데이터는 기기에만 저장되며 외부 서버로 전송되지 않습니다.
+                {user
+                  ? ' 구글 계정으로 연동되어 클라우드에 안전하게 백업됩니다.'
+                  : ' 모든 데이터는 기기에만 저장되며 외부 서버로 전송되지 않습니다.'}
               </p>
             </div>
           </div>
         </section>
+
+        {user && (
+          <section className="bg-white rounded-2xl p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-teal-500" />
+              계정
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-700 font-medium">{user.email}</p>
+                  <p className="text-xs text-teal-600">구글 계정 연동됨</p>
+                </div>
+                <div className="w-8 h-8 bg-teal-50 rounded-full flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-teal-500" />
+                </div>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="w-full py-2.5 text-sm text-gray-400 hover:text-red-400 transition-colors flex items-center justify-center gap-2 border border-gray-100 rounded-xl hover:border-red-200"
+              >
+                <LogOut className="w-4 h-4" />
+                로그아웃
+              </button>
+            </div>
+          </section>
+        )}
       </main>
       </div>
 
