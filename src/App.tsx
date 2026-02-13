@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Navigation } from '@/components/Navigation';
 import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -12,9 +14,40 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import './index.css';
 
 function AuthCallback() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
-  if (loading) {
+  useEffect(() => {
+    if (loading || !user) return;
+
+    // 빠른 체크: 이미 온보딩 완료한 유저
+    if (localStorage.getItem('pulse_onboarded')) {
+      setRedirectTo('/home');
+      return;
+    }
+
+    // 느린 체크: Supabase에서 프로필 확인 (다른 기기에서 온 기존 유저)
+    const checkProfile = async () => {
+      try {
+        const { data } = await supabase.from('user_profiles')
+          .select('mbti, occupation')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.mbti || data?.occupation) {
+          localStorage.setItem('pulse_onboarded', 'true');
+          setRedirectTo('/home');
+        } else {
+          setRedirectTo('/onboarding');
+        }
+      } catch {
+        setRedirectTo('/onboarding');
+      }
+    };
+    checkProfile();
+  }, [loading, user]);
+
+  if (loading || !redirectTo) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
@@ -22,7 +55,7 @@ function AuthCallback() {
     );
   }
 
-  return <Navigate to="/home" replace />;
+  return <Navigate to={redirectTo} replace />;
 }
 
 function AppContent() {

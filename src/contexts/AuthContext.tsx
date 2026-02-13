@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { type User, type Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { syncAll } from '@/lib/sync';
+import { migrateUserData } from '@/lib/db';
 
 interface AuthContextType {
   user: User | null;
@@ -9,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  linkGoogleAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,7 +51,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleUserLogin = async (authUser: User) => {
+    // 로컬 → Google 연동: 데이터 마이그레이션
+    const pendingMigration = localStorage.getItem('pulse_pending_migration');
+    if (pendingMigration && pendingMigration !== authUser.id) {
+      try {
+        await migrateUserData(pendingMigration, authUser.id);
+        console.log('[Auth] Data migrated:', pendingMigration, '→', authUser.id);
+      } catch (err) {
+        console.error('[Auth] Migration failed:', err);
+      }
+      localStorage.removeItem('pulse_pending_migration');
+    }
+
     localStorage.setItem('pulse_user_id', authUser.id);
+    localStorage.setItem('pulse_auth_type', 'google');
 
     try {
       // DB columns use snake_case: user_id, created_at, etc.
@@ -96,10 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     localStorage.removeItem('pulse_user_id');
+    localStorage.removeItem('pulse_auth_type');
+    localStorage.removeItem('pulse_onboarded');
+  };
+
+  /** 로컬 유저가 Google 계정을 연동할 때 호출 */
+  const linkGoogleAccount = async () => {
+    const currentUserId = localStorage.getItem('pulse_user_id');
+    if (currentUserId) {
+      localStorage.setItem('pulse_pending_migration', currentUserId);
+    }
+    await signInWithGoogle();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signOut, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );
