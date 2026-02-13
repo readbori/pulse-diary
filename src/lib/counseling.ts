@@ -7,10 +7,14 @@ import type { EmotionRecord, WeeklyReport, EmotionType } from '@/types';
  * AI 리포트 생성 시 system prompt에 포함하여 누적 성장 상담이 가능하게 합니다.
  */
 export async function buildSessionContext(userId: string): Promise<string> {
-  const [records, reports] = await Promise.all([
+  const [allRecords, allReports] = await Promise.all([
     getAllRecords(userId),
     getReports(userId),
   ]);
+
+  // 토큰 절약: 최근 30건 기록 + 최근 3개 리포트만 사용
+  const records = allRecords.slice(0, 30);
+  const reports = allReports.slice(0, 3);
 
   if (records.length === 0) {
     return '이 사용자는 첫 상담입니다. 따뜻하게 환영해주세요.';
@@ -61,13 +65,13 @@ export async function buildSessionContext(userId: string): Promise<string> {
     sections.push(`## 최근 2주 감정 흐름 (최근 10건)\n${recentEmotions}`);
   }
 
-  // 4. 이전 리포트 요약 (최근 3개)
+  // 4. 이전 리포트 요약 (최근 3개, 요약 100자 제한)
   if (reports.length > 0) {
-    const recentReports = reports.slice(0, 3);
-    const reportSummaries = recentReports
+    const reportSummaries = reports
       .map(r => {
         const dateRange = `${new Date(r.weekStart).toLocaleDateString('ko-KR')} ~ ${new Date(r.weekEnd).toLocaleDateString('ko-KR')}`;
-        return `  - [${dateRange}] ${r.content.summary}`;
+        const summary = r.content.summary?.slice(0, 100) + (r.content.summary?.length > 100 ? '...' : '');
+        return `  - [${dateRange}] ${summary}`;
       })
       .join('\n');
     sections.push(`## 이전 상담 리포트 요약\n${reportSummaries}`);

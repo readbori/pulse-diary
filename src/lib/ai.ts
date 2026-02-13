@@ -1,6 +1,7 @@
 import type { EmotionType, WeeklyReport, EmotionRecord, UserProfile } from '@/types';
 import { getUserTier } from '@/lib/user';
 import { ALL_EMOTIONS } from '@/lib/emotions';
+import { getEmotionLabel } from '@/lib/emotions';
 import { COUNSELOR_PERSONA, ANALYSIS_PERSONA } from '@/lib/persona';
 import { buildSessionContext } from '@/lib/counseling';
 import { getQuoteForEmotions } from '@/lib/quotes';
@@ -11,6 +12,67 @@ const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 export interface EmotionAnalysis {
   primary: EmotionType;
   scores: Record<EmotionType, number>;
+}
+
+// ─── 스마트 기록 요약 (토큰 절약) ───
+
+function buildSmartRecordSummary(records: EmotionRecord[]): string {
+  const MAX_RAW_RECORDS = 15;
+
+  // 소량이면 전부 전송
+  if (records.length <= MAX_RAW_RECORDS) {
+    return records.map((r, i) => {
+      const date = new Date(r.createdAt).toLocaleDateString('ko-KR');
+      const emotion = r.emotions?.primary ? getEmotionLabel(r.emotions.primary) : 'unknown';
+      return `${i + 1}. [${date}] 감정: ${emotion} | "${r.transcript}"`;
+    }).join('\n');
+  }
+
+  // 대량이면 통계 + 대표 샘플
+  const dateRange = {
+    start: new Date(records[records.length - 1].createdAt).toLocaleDateString('ko-KR'),
+    end: new Date(records[0].createdAt).toLocaleDateString('ko-KR'),
+  };
+
+  // 감정 빈도 집계
+  const emotionCounts: Partial<Record<EmotionType, number>> = {};
+  for (const r of records) {
+    const e = r.emotions?.primary;
+    if (e) emotionCounts[e] = (emotionCounts[e] || 0) + 1;
+  }
+  const sortedEmotions = Object.entries(emotionCounts)
+    .sort(([, a], [, b]) => (b as number) - (a as number));
+  const emotionBreakdown = sortedEmotions
+    .map(([emotion, count]) => `  - ${getEmotionLabel(emotion)}: ${count}회`)
+    .join('\n');
+
+  // 대표 샘플 10개 (최근 5 + 가장 다양한 감정 5개)
+  const recent5 = records.slice(0, 5);
+  const uniqueEmotionSamples: EmotionRecord[] = [];
+  const seenEmotions = new Set(recent5.map(r => r.emotions?.primary));
+  for (const r of records) {
+    if (uniqueEmotionSamples.length >= 5) break;
+    const e = r.emotions?.primary;
+    if (e && !seenEmotions.has(e)) {
+      uniqueEmotionSamples.push(r);
+      seenEmotions.add(e);
+    }
+  }
+  const sampleRecords = [...recent5, ...uniqueEmotionSamples];
+  const samplesText = sampleRecords.map((r, i) => {
+    const date = new Date(r.createdAt).toLocaleDateString('ko-KR');
+    const emotion = r.emotions?.primary ? getEmotionLabel(r.emotions.primary) : 'unknown';
+    return `  ${i + 1}. [${date}] ${emotion} | "${r.transcript}"`;
+  }).join('\n');
+
+  return `[기간: ${dateRange.start} ~ ${dateRange.end}]
+[총 ${records.length}건의 감정 기록]
+
+감정 분포:
+${emotionBreakdown}
+
+대표 기록 (${sampleRecords.length}건):
+${samplesText}`;
 }
 
 // ─── 18감정 프롬프트 ───
@@ -71,52 +133,54 @@ JSON 형식:
 
 function buildReportPrompt(records: string, isPremium: boolean, profile?: UserProfile): string {
   const profileBlock = (profile?.mbti || profile?.occupation)
-    ? `\n\n사용자 프로필:\n${profile.mbti ? `- MBTI: ${profile.mbti}` : ''}${profile.occupation ? `\n- 직업: ${profile.occupation}` : ''}\n위 프로필을 고려하여 성격 유형과 직업 특성에 맞는 맞춤형 분석을 제공하세요.\n`
+    ? `\n\n사용자 프로필:\n${profile.mbti ? `- MBTI: ${profile.mbti} (이 성격 유형의 감정 처리 특성을 반영하세요)` : ''}${profile.occupation ? `\n- 직업: ${profile.occupation} (직업적 스트레스와 감정 맥락을 고려하세요)` : ''}\n`
     : '';
 
   if (isPremium) {
-    return `다음은 사용자의 감정 기록들입니다. 전문 심리 상담가의 관점에서 깊이 있는 분석 리포트를 작성해주세요.${profileBlock}
+    return `당신은 10년 경력의 임상심리 전문가입니다. 아래 감정 기록 데이터를 바탕으로, 이 사용자만을 위한 깊이 있는 맞춤형 분석 리포트를 작성하세요.${profileBlock}
 
 기록 데이터:
 ${records}
 
-반드시 아래 JSON 형식만 반환하세요:
+반드시 아래 JSON 형식만 반환하세요. 각 필드는 최소 150자 이상, 충분히 길고 구체적으로 작성하세요:
 {
-  "summary": "전체 감정 요약 (5-8문장). 감정의 흐름과 변화를 시간순으로 서술하고, 핵심 감정 상태를 심리학적 관점에서 해석해주세요. CBT(인지행동치료)나 정서중심치료(EFT) 등 관련 이론을 자연스럽게 포함하세요.",
-  "patterns": "감정 패턴 심층 분석 (5-8문장). 반복되는 감정, 트리거 상황, 감정 간 연관성을 분석하세요. '감정 조절 이론(Gross의 과정모델)', '정서 도식(emotion schema)' 등 학술적 프레임워크를 활용하여 패턴을 설명해주세요.",
-  "empathy": "공감과 위로의 말 (5-8문장). 사용자의 구체적 경험을 언급하며 진심어린 공감을 표현하세요. 로저스(Rogers)의 무조건적 긍정적 존중의 태도로 작성하세요. 사용자가 느꼈을 감정의 타당성을 충분히 인정해주세요.",
-  "positives": "긍정적 발견과 성장 포인트 (5-8문장). 감정을 기록하는 행위 자체의 심리학적 가치(표현적 글쓰기 효과, Pennebaker 연구), 발견된 심리적 강점(resilience), 그리고 성장의 근거를 구체적으로 제시하세요.",
-  "suggestions": "전문가 수준 실천 제안 (5-8문장). 마음챙김(mindfulness), 감사 일기, 인지 재구성(cognitive restructuring) 등 근거 기반 기법을 구체적 실천 방법과 함께 2-3가지 제안하세요. 각 제안에 왜 효과적인지 간단한 학술적 근거를 덧붙이세요.",
-  "quote": "사용자의 현재 감정 상태에 적합한 한 줄 명언 또는 심리학적 인용구. 저자를 포함하세요 (예: '감정을 느끼는 것은 살아있다는 증거입니다. — Carl Rogers'). 사용자의 주요 감정에 공감하면서도 성장을 격려하는 내용이어야 합니다."
+  "summary": "이 기간 동안의 감정 여정을 시간 순서로 서술하세요. (1) 어떤 감정이 주를 이루었는지 (2) 감정이 어떻게 변화했는지 (3) 특별히 눈에 띄는 날이나 사건이 있었는지를 사용자의 실제 기록 내용을 인용하며 구체적으로 분석하세요. CBT나 EFT 등 관련 이론을 자연스럽게 포함하되, 학술 용어만 나열하지 말고 사용자의 경험에 연결하세요. 최소 6문장.",
+  "patterns": "반복되는 감정 패턴을 발견하고 분석하세요. (1) 특정 요일/시간대에 반복되는 감정이 있는지 (2) 감정 간의 연관 관계 (예: A감정 다음에 B감정이 자주 오는지) (3) 감정의 강도 변화 추이를 Gross의 감정 조절 과정 모델 등을 활용하여 설명하세요. 사용자의 실제 데이터에서 근거를 들어 분석하세요. 최소 6문장.",
+  "empathy": "사용자의 구체적 경험을 직접 언급하며 공감하세요. '~하셨군요', '~느끼셨을 때 정말 힘드셨을 거예요'처럼 사용자가 실제로 기록한 내용에 대해 구체적으로 반응하세요. 로저스의 무조건적 긍정적 존중을 바탕으로, 어떤 감정이든 타당하다는 것을 인정하세요. 사용자가 '이 사람이 내 마음을 정말 알아주는구나'라고 느끼도록 작성하세요. 최소 6문장.",
+  "positives": "이 기간 동안 발견된 긍정적 신호와 성장 포인트를 구체적으로 찾아 칭찬하세요. (1) 감정을 기록하는 행위 자체의 심리학적 가치 (Pennebaker의 표현적 글쓰기 연구) (2) 어려운 감정을 느끼면서도 기록을 이어간 회복탄력성 (3) 데이터에서 발견되는 구체적인 성장 근거를 제시하세요. 최소 5문장.",
+  "suggestions": "위 분석(summary, patterns, empathy, positives)에서 발견한 내용을 근거로, 사용자의 실제 생활을 개선할 수 있는 구체적 실천 제안 3가지를 제시하세요. 감정 이야기를 반복하지 말고, 행동·습관·루틴·관계·환경 변화 등 실질적 생활 조언을 하세요. 각 제안마다: (1) 정확히 무엇을 어떻게 하면 되는지 (예: '퇴근 후 20분 산책', '주 2회 지인과 식사 약속') (2) 위 분석에서 이 제안이 필요한 이유 (사용자의 기록을 인용) (3) 학술적 근거 (행동 활성화, 사회적 지지 이론, 수면 위생 등)를 포함하세요. '감정을 느껴보세요', '마음을 관찰하세요' 같은 추상적 조언 금지. 최소 6문장.",
+  "quote": "사용자의 주요 감정에 공감하면서 성장을 격려하는 명언. 저자 포함 (예: '감정을 느끼는 것은 살아있다는 증거입니다. — Carl Rogers')"
 }
 
-규칙:
+핵심 규칙:
 - 한국어로 작성
-- 전문적이면서도 따뜻하고 공감하는 톤
-- 심리학적 이론과 연구를 자연스럽게 인용
-- 각 필드를 충분히 길고 상세하게 작성
+- 반드시 사용자의 실제 기록 내용을 인용하여 개인화된 분석을 제공하세요
+- "일반적으로~", "보통~" 같은 일반론 금지. 이 사용자의 데이터에서 근거를 제시하세요
+- 전문적이면서도 따뜻하고, 읽으면 돈을 낼 가치가 있다고 느끼게 작성하세요
+- 각 필드에서 핵심 키워드, 감정명, 중요 조언, 학술 용어 등은 **볼드**(별표 두 개로 감싸기)로 강조하세요 (예: "**회복탄력성**이 높아지고 있습니다")
 - JSON만 반환`;
   }
 
-  return `다음은 사용자의 감정 기록들입니다. 이를 분석하여 리포트를 작성해주세요.${profileBlock}
+  return `당신은 따뜻한 감정 상담가입니다. 아래 감정 기록을 분석하여 사용자에게 도움이 되는 리포트를 작성하세요.${profileBlock}
 
 기록 데이터:
 ${records}
 
-반드시 아래 JSON 형식만 반환하세요:
+반드시 아래 JSON 형식만 반환하세요. 각 필드를 빈약하지 않게, 최소 100자 이상으로 충실하게 작성하세요:
 {
-  "summary": "전체 감정 요약 (3-5문장). 기록된 감정의 전체적인 흐름과 주요 감정 상태를 설명해주세요.",
-  "patterns": "감정 패턴 분석 (3-5문장). 반복되는 감정, 트리거 상황, 감정 변화의 방향성을 분석해주세요.",
-  "empathy": "공감과 위로의 말 (3-5문장). 사용자의 감정 경험에 진심으로 공감하고 따뜻한 위로를 전해주세요.",
-  "positives": "긍정적인 부분 발견 (3-5문장). 칭찬할 포인트와 성장 가능성을 구체적으로 이야기해주세요.",
-  "suggestions": "실천 가능한 제안 (3-5문장). 일상에서 바로 적용할 수 있는 구체적 행동 2가지를 제안해주세요.",
-  "quote": "사용자의 감정에 공감하는 짧은 명언 한 줄. 저자 포함 (예: '오늘 하루도 충분히 잘했어요. — 마음 길잡이')"
+  "summary": "이 기간 동안 사용자가 느낀 감정의 전체적인 흐름을 설명하세요. 어떤 감정이 가장 많았고, 감정이 어떻게 변화했는지, 사용자의 실제 기록 내용을 인용하며 구체적으로 서술하세요. 최소 4문장으로 작성하세요.",
+  "patterns": "반복되는 감정이나 특정 상황에서 나타나는 감정 경향을 분석하세요. 사용자의 기록에서 발견한 구체적 패턴을 제시하고, 이 패턴이 왜 나타나는지 간단히 설명하세요. 최소 4문장.",
+  "empathy": "사용자의 감정 경험에 진심으로 공감하세요. 사용자가 기록한 구체적 내용을 언급하며 '~하셨군요', '~느꼈을 때 힘드셨을 거예요'처럼 개인화된 위로를 전하세요. 최소 4문장.",
+  "positives": "이 기간 동안의 긍정적 발견을 찾아 구체적으로 칭찬하세요. 감정을 기록하는 습관 자체의 가치, 어려움 속에서도 보이는 성장 신호를 구체적으로 이야기하세요. 최소 3문장.",
+  "suggestions": "위 분석 결과를 바탕으로, 사용자의 일상을 실질적으로 개선할 행동 2가지를 제안하세요. 감정 이야기를 반복하지 말고, 구체적인 생활 변화를 제안하세요 (예: '매일 잠들기 전 10분 스트레칭', '주 1회 새로운 장소에서 점심 먹기', '하루 1번 고마운 사람에게 짧은 메시지 보내기'). 각 제안은 위 분석에서 왜 이것이 필요한지 근거를 들어 설명하세요. '감정을 느껴보세요' 같은 추상적 조언 금지. 최소 4문장.",
+  "quote": "사용자의 감정에 공감하는 명언 한 줄. 저자 포함 (예: '오늘 하루도 충분히 잘했어요. — 마음 길잡이')"
 }
 
-규칙:
+핵심 규칙:
 - 한국어로 작성
+- "일반적으로~" 같은 일반론이 아닌, 사용자의 실제 기록을 참고한 구체적 내용
 - 따뜻하고 공감하는 톤
-- 각 필드를 충분히 상세하게 작성
+- 각 필드에서 핵심 키워드, 감정명, 중요 조언은 **볼드**(별표 두 개로 감싸기)로 강조하세요 (예: "**감사함**을 자주 느끼셨네요")
 - JSON만 반환`;
 }
 
@@ -161,11 +225,7 @@ export async function generateReport(
 ): Promise<Omit<WeeklyReport, 'id'>> {
   const tier = getUserTier();
 
-  const recordSummaries = records.map((r, i) => {
-    const date = new Date(r.createdAt).toLocaleDateString('ko-KR');
-    const emotion = r.emotions?.primary || 'unknown';
-    return `${i + 1}. [${date}] 감정: ${emotion} | "${r.transcript}"`;
-  }).join('\n');
+  const recordSummaries = buildSmartRecordSummary(records);
 
   // 감정 요약 집계
   const emotionSummary = {} as Record<EmotionType, number>;
@@ -313,7 +373,7 @@ async function callReportLLM(
             { role: 'user' as const, content: prompt }
           ],
           temperature: 0.5,
-          max_tokens: isPremium ? 1500 : 800,
+          max_tokens: isPremium ? 3000 : 1500,
           response_format: { type: 'json_object' },
         },
       }
@@ -332,7 +392,7 @@ async function callReportLLM(
             { role: 'user' as const, content: prompt }
           ],
           temperature: 0.5,
-          max_tokens: 800,
+          max_tokens: 1500,
         },
       };
 
