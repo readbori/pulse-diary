@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Sparkles, X, Send, Mic, Activity, Moon, Sun, Cloud, Zap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Calendar, Sparkles, X, Send, Mic, Activity, Moon, Sun, Cloud, Zap, Crown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { RecordButton } from '@/components/RecordButton';
 import { StreakDisplay } from '@/components/StreakDisplay';
 import { TranscriptModal } from '@/components/TranscriptModal';
@@ -10,11 +10,13 @@ import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { saveRecord, updateStreak, getStreak, getProfile, getRecordsByDateRange } from '@/lib/db';
 import { analyzeEmotion } from '@/lib/ai';
 import { getEmotionLabel } from '@/lib/emotions';
+import { getUserTier } from '@/lib/user';
 import type { StreakData, UserProfile, EmotionRecord } from '@/types';
 
 const DEMO_USER_ID = 'demo-user';
 
 export function HomePage() {
+  const navigate = useNavigate();
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -137,58 +139,52 @@ export function HomePage() {
   const getGreeting = () => {
     const hour = new Date().getHours();
     const name = profile?.name || '';
-    const namePrefix = name ? `${name}님,\n` : '';
+    const namePrefix = name ? `${name}님, ` : '';
 
     const timeGreeting =
       hour < 6
-        ? '편안한 밤 되고 계신가요?'
+        ? '편안한 밤이에요'
         : hour < 12
           ? '좋은 아침이에요'
           : hour < 18
             ? '오늘 하루 어떠세요?'
             : hour < 22
-              ? '오늘 하루는 어땠나요?'
+              ? '오늘 하루 어땠나요?'
               : '편안한 밤 되세요';
 
-    // Emotion-based personalized greetings
-    if (recentEmotion) {
-      const emotionGreetings: Record<string, string[]> = {
-        // Positive emotions
-        happiness: ['좋은 기운이 계속되고 있네요!', '행복한 하루 보내고 계시군요'],
-        gratitude: ['감사한 마음이 빛나는 하루네요', '따뜻한 감사의 마음이 느껴져요'],
-        excitement: ['설레는 일들이 가득하시군요!', '두근두근한 하루를 보내고 계시네요'],
-        calm: ['평온한 시간을 보내고 계시네요', '마음이 차분하시군요'],
-        hope: ['희망찬 마음이 느껴져요', '앞으로의 날들이 기대되시죠?'],
-        pride: ['스스로를 자랑스러워할 시간이에요', '대단한 일을 해내고 계시네요'],
-        // Negative emotions
-        sadness: ['힘든 시간 보내고 계시죠.\n오늘도 함께할게요', '마음이 무거우셨군요.\n언제든 기대어도 괜찮아요'],
-        loneliness: ['혼자가 아니에요.\n여기 있을게요', '외로운 마음, 충분히 이해해요'],
-        anger: ['마음이 많이 힘드셨군요.\n천천히 풀어가 봐요', '화가 날 만한 일이 있었군요'],
-        irritation: ['짜증나는 일이 있었군요.\n잠시 숨을 고르세요', '속상한 마음, 알아줄게요'],
-        anxiety: ['불안한 마음이 있으시군요.\n괜찮아질 거예요', '걱정이 많으셨죠.\n함께 정리해봐요'],
-        fear: ['두려운 마음이 있으셨군요.\n한 걸음씩 가면 돼요', '걱정마세요, 함께 할게요'],
-        shame: ['자신을 너무 탓하지 마세요.\n충분히 잘 하고 계세요', '괜찮아요, 누구나 그런 날이 있어요'],
-        disgust: ['불쾌한 일이 있었군요.\n마음을 달래봐요', '기분 나쁜 일이 있었죠'],
-        // Neutral
-        surprise: ['놀라운 일들이 있었군요!', '예상치 못한 일이 있었네요'],
-        confusion: ['복잡한 마음이시군요.\n천천히 정리해봐요', '혼란스러웠던 마음, 함께 풀어봐요'],
-        boredom: ['새로운 기분 전환이 필요할 때네요', '심심한 하루였군요'],
-        nostalgia: ['그리운 것들이 있으시군요', '추억을 떠올리는 시간이네요'],
-      };
-
-      const greetings = emotionGreetings[recentEmotion];
-      if (greetings && greetings.length > 0) {
-        const dayIndex = new Date().getDate() % greetings.length;
-        const emotionGreeting = greetings[dayIndex];
-        return `${namePrefix}${timeGreeting}\n${emotionGreeting}`;
-      }
-
-      const emotionLabel = getEmotionLabel(recentEmotion);
-      return `${namePrefix}${timeGreeting}\n요즘 ${emotionLabel} 감정이 자주 느껴지셨군요`;
-    }
-
-    // Fallback to time-based greeting
     return `${namePrefix}${timeGreeting}`;
+  };
+
+  /** 감정 기반 서브 메시지 (1줄) */
+  const getEmotionSubtext = (): string | null => {
+    if (!recentEmotion) return null;
+
+    const emotionSubtexts: Record<string, string[]> = {
+      happiness: ['좋은 기운이 계속되고 있네요!', '행복한 흐름이에요'],
+      gratitude: ['감사한 마음이 빛나요', '따뜻한 하루네요'],
+      excitement: ['설레는 일이 가득하군요!', '두근거리는 하루에요'],
+      calm: ['평온한 시간이네요', '마음이 차분하시군요'],
+      hope: ['희망찬 마음이 느껴져요', '기대되는 날들이에요'],
+      pride: ['자랑스러운 하루에요', '대단하세요!'],
+      sadness: ['오늘도 함께할게요', '기대어도 괜찮아요'],
+      loneliness: ['혼자가 아니에요', '함께 있을게요'],
+      anger: ['천천히 풀어가요', '마음이 힘드셨군요'],
+      irritation: ['잠시 숨을 고르세요', '알아줄게요'],
+      anxiety: ['괜찮아질 거예요', '함께 정리해봐요'],
+      fear: ['한 걸음씩이면 돼요', '함께 할게요'],
+      shame: ['충분히 잘 하고 있어요', '괜찮아요'],
+      disgust: ['마음을 달래봐요', '기분 전환해봐요'],
+      surprise: ['놀라운 일이 있었군요!', '예상 밖이었죠'],
+      confusion: ['천천히 정리해봐요', '함께 풀어봐요'],
+      boredom: ['기분 전환이 필요할 때에요', '새로운 걸 시도해봐요'],
+      nostalgia: ['그리운 것들이 있군요', '추억의 시간이네요'],
+    };
+
+    const texts = emotionSubtexts[recentEmotion];
+    if (texts && texts.length > 0) {
+      return texts[new Date().getDate() % texts.length];
+    }
+    return `요즘 ${getEmotionLabel(recentEmotion)} 감정이 자주 느껴지셨군요`;
   };
 
   const getTimeIcon = () => {
@@ -241,7 +237,7 @@ export function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-3xl font-semibold text-gray-700 mb-3 whitespace-pre-line text-center"
+            className="text-2xl font-semibold text-gray-700 mb-2 text-center"
           >
             {getGreeting()}
           </motion.h1>
@@ -250,9 +246,9 @@ export function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-gray-400 font-emotional text-lg"
+            className="text-gray-400 text-base text-center"
           >
-            당신의 마음을 들려주세요
+            {getEmotionSubtext() || '당신의 마음을 들려주세요'}
           </motion.p>
         </div>
 
@@ -306,15 +302,32 @@ export function HomePage() {
 
         <AnimatePresence>
           {saveSuccess && (
-            <motion.div
+            <motion.button
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="fixed inset-x-4 bottom-24 mx-auto max-w-sm bg-gradient-to-r from-teal-400 to-emerald-500 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 z-50"
+              onClick={() => getUserTier() === 'free' && navigate('/settings')}
+              className={`fixed inset-x-4 bottom-24 mx-auto max-w-sm px-6 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 z-50 transition-all ${
+                getUserTier() === 'free' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white cursor-pointer hover:scale-105' 
+                  : 'bg-gradient-to-r from-teal-400 to-emerald-500 text-white'
+              }`}
             >
-              <Sparkles className="w-5 h-5" />
-              <span className="font-medium">오늘의 마음을 기록했어요</span>
-            </motion.div>
+              {getUserTier() === 'free' ? (
+                <>
+                  <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300 animate-pulse" />
+                  <div className="text-left">
+                    <p className="font-bold text-sm">기록이 저장되었어요</p>
+                    <p className="text-xs text-indigo-100">프리미엄으로 더 깊이 분석해보세요</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  <span className="font-medium">오늘의 마음을 기록했어요</span>
+                </>
+              )}
+            </motion.button>
           )}
         </AnimatePresence>
       </motion.div>

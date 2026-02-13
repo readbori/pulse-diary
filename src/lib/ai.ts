@@ -56,24 +56,52 @@ JSON 형식:
 
 // ─── 리포트 생성 프롬프트 ───
 
-const REPORT_PROMPT = `다음은 사용자의 감정 기록들입니다. 이를 분석하여 리포트를 작성해주세요.
+// ─── 티어별 리포트 프롬프트 생성 ───
+
+function buildReportPrompt(records: string, isPremium: boolean): string {
+  if (isPremium) {
+    return `다음은 사용자의 감정 기록들입니다. 전문 심리 상담가의 관점에서 깊이 있는 분석 리포트를 작성해주세요.
 
 기록 데이터:
-{records}
+${records}
 
 반드시 아래 JSON 형식만 반환하세요:
 {
-  "summary": "전체 감정 요약 (2-3문장)",
-  "patterns": "감정 패턴 분석 (반복되는 감정, 트리거 등)",
-  "empathy": "공감과 위로의 말 (따뜻하고 진심어린 톤)",
-  "positives": "긍정적인 부분 발견 (칭찬, 성장 포인트)",
-  "suggestions": "실천 가능한 제안 (구체적 행동 1-2가지)"
+  "summary": "전체 감정 요약 (5-8문장). 감정의 흐름과 변화를 시간순으로 서술하고, 핵심 감정 상태를 심리학적 관점에서 해석해주세요. CBT(인지행동치료)나 정서중심치료(EFT) 등 관련 이론을 자연스럽게 포함하세요.",
+  "patterns": "감정 패턴 심층 분석 (5-8문장). 반복되는 감정, 트리거 상황, 감정 간 연관성을 분석하세요. '감정 조절 이론(Gross의 과정모델)', '정서 도식(emotion schema)' 등 학술적 프레임워크를 활용하여 패턴을 설명해주세요.",
+  "empathy": "공감과 위로의 말 (5-8문장). 사용자의 구체적 경험을 언급하며 진심어린 공감을 표현하세요. 로저스(Rogers)의 무조건적 긍정적 존중의 태도로 작성하세요. 사용자가 느꼈을 감정의 타당성을 충분히 인정해주세요.",
+  "positives": "긍정적 발견과 성장 포인트 (5-8문장). 감정을 기록하는 행위 자체의 심리학적 가치(표현적 글쓰기 효과, Pennebaker 연구), 발견된 심리적 강점(resilience), 그리고 성장의 근거를 구체적으로 제시하세요.",
+  "suggestions": "전문가 수준 실천 제안 (5-8문장). 마음챙김(mindfulness), 감사 일기, 인지 재구성(cognitive restructuring) 등 근거 기반 기법을 구체적 실천 방법과 함께 2-3가지 제안하세요. 각 제안에 왜 효과적인지 간단한 학술적 근거를 덧붙이세요."
+}
+
+규칙:
+- 한국어로 작성
+- 전문적이면서도 따뜻하고 공감하는 톤
+- 심리학적 이론과 연구를 자연스럽게 인용
+- 각 필드를 충분히 길고 상세하게 작성
+- JSON만 반환`;
+  }
+
+  return `다음은 사용자의 감정 기록들입니다. 이를 분석하여 리포트를 작성해주세요.
+
+기록 데이터:
+${records}
+
+반드시 아래 JSON 형식만 반환하세요:
+{
+  "summary": "전체 감정 요약 (3-5문장). 기록된 감정의 전체적인 흐름과 주요 감정 상태를 설명해주세요.",
+  "patterns": "감정 패턴 분석 (3-5문장). 반복되는 감정, 트리거 상황, 감정 변화의 방향성을 분석해주세요.",
+  "empathy": "공감과 위로의 말 (3-5문장). 사용자의 감정 경험에 진심으로 공감하고 따뜻한 위로를 전해주세요.",
+  "positives": "긍정적인 부분 발견 (3-5문장). 칭찬할 포인트와 성장 가능성을 구체적으로 이야기해주세요.",
+  "suggestions": "실천 가능한 제안 (3-5문장). 일상에서 바로 적용할 수 있는 구체적 행동 2가지를 제안해주세요."
 }
 
 규칙:
 - 한국어로 작성
 - 따뜻하고 공감하는 톤
+- 각 필드를 충분히 상세하게 작성
 - JSON만 반환`;
+}
 
 // ─── 감정 분석 메인 함수 ───
 
@@ -142,9 +170,9 @@ export async function generateReport(
   }
 
   try {
-    const provider = (tier === 'premium' || tier === 'advanced') && OPENAI_API_KEY
-      ? 'openai' : 'openrouter';
-    content = await callReportLLM(recordSummaries, provider, sessionContext);
+    const isPremium = tier === 'premium' || tier === 'advanced';
+    const provider = isPremium && OPENAI_API_KEY ? 'openai' : 'openrouter';
+    content = await callReportLLM(recordSummaries, provider, sessionContext, isPremium);
   } catch (error) {
     console.warn('[AI] 리포트 생성 실패, 기본 리포트 사용:', error);
     content = {
@@ -232,12 +260,13 @@ async function callLLM(transcript: string, provider: 'openai' | 'openrouter'): P
 async function callReportLLM(
   recordSummaries: string,
   provider: 'openai' | 'openrouter',
-  sessionContext?: string
+  sessionContext?: string,
+  isPremium: boolean = false
 ): Promise<WeeklyReport['content']> {
   const contextBlock = sessionContext
     ? `\n\n참고할 사용자 히스토리:\n${sessionContext}`
     : '';
-  const prompt = REPORT_PROMPT.replace('{records}', recordSummaries) + contextBlock;
+  const prompt = buildReportPrompt(recordSummaries, isPremium) + contextBlock;
 
   const { url, headers, body } = provider === 'openai'
     ? {
@@ -253,7 +282,7 @@ async function callReportLLM(
             { role: 'user' as const, content: prompt }
           ],
           temperature: 0.5,
-          max_tokens: 600,
+          max_tokens: isPremium ? 1500 : 800,
           response_format: { type: 'json_object' },
         },
       }
@@ -272,7 +301,7 @@ async function callReportLLM(
             { role: 'user' as const, content: prompt }
           ],
           temperature: 0.5,
-          max_tokens: 600,
+          max_tokens: 800,
         },
       };
 

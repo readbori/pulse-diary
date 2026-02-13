@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles, Crown, ArrowRight } from 'lucide-react';
+import { EmotionIcon } from '@/components/EmotionIcon';
 import { useNavigate } from 'react-router-dom';
 import { getRecordsByDateRange, deleteRecord, updateRecord, saveReport, getReports } from '@/lib/db';
 import { getMonthHolidays, type HolidayInfo } from '@/lib/holidays';
 import { getEmotionDotColor, getEmotionGradient, getEmotionColor, getEmotionLabel, normalizeEmotion } from '@/lib/emotions';
 import { generateReport } from '@/lib/ai';
+import { getUserTier } from '@/lib/user';
 import type { EmotionRecord } from '@/types';
 
 export function HistoryPage() {
@@ -188,13 +190,35 @@ export function HistoryPage() {
     setAnalysisResult(null);
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    // 1) 다중 선택 모드: 선택된 날짜로 배치 분석
     if (selectMode && selectedDates.size > 0) {
       handleBatchAnalyze();
-    } else {
-      setShowGuide(true);
-      setTimeout(() => setShowGuide(false), 3000);
+      return;
     }
+
+    // 2) 현재 선택된 날짜에 기록이 있으면 바로 분석
+    const currentDateRecords = getRecordsForDate(selectedDate);
+    if (currentDateRecords.length > 0) {
+      setIsAnalyzing(true);
+      try {
+        const userId = localStorage.getItem('pulse_user_id');
+        if (!userId) return;
+        const dateLabel = `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 분석`;
+        const reportData = await generateReport(userId, currentDateRecords, dateLabel);
+        setAnalysisResult(reportData.content);
+        await saveReport(reportData);
+      } catch (error) {
+        console.error('분석 실패:', error);
+      } finally {
+        setIsAnalyzing(false);
+      }
+      return;
+    }
+
+    // 3) 기록이 없는 날짜일 때만 가이드 표시
+    setShowGuide(true);
+    setTimeout(() => setShowGuide(false), 3000);
   };
 
   const handleRecordNow = () => {
@@ -306,18 +330,12 @@ export function HistoryPage() {
                 {hasRecord && (
                   <div className="flex flex-col gap-0.5 mt-0.5 items-center">
                     {dateRecords.slice(0, 2).map((r, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-0.5 px-1 py-0.5 rounded-full"
-                        style={{ backgroundColor: getEmotionDotColor(r.emotions?.primary) + '25' }}
-                      >
-                        <div
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: getEmotionDotColor(r.emotions?.primary) }}
+                      <div key={idx}>
+                        <EmotionIcon 
+                          emotion={r.emotions?.primary} 
+                          size={12} 
+                          className="w-5 h-5" 
                         />
-                        <span className="text-[7px] font-medium leading-none" style={{ color: getEmotionDotColor(r.emotions?.primary) }}>
-                          {getEmotionLabel(r.emotions?.primary).slice(0, 2)}
-                        </span>
                       </div>
                     ))}
                     {dateRecords.length > 2 && (
@@ -339,10 +357,15 @@ export function HistoryPage() {
           <div className="flex gap-2">
             <button
               onClick={handleAnalyze}
-              className="flex items-center gap-1.5 px-3 py-2 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 transition-colors"
+              disabled={isAnalyzing}
+              className="flex items-center gap-1.5 px-3 py-2 bg-teal-500 text-white rounded-xl text-sm font-medium hover:bg-teal-600 transition-colors disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" />
-              분석하기
+              {isAnalyzing ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {isAnalyzing ? '분석 중...' : '분석하기'}
             </button>
             <button
               onClick={handleRecordNow}
@@ -382,9 +405,9 @@ export function HistoryPage() {
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getEmotionDotColor(record.emotions?.primary) + '20' }}>
-                  <div
-                    className="w-6 h-6 rounded-full shadow-inner"
-                    style={{ background: `linear-gradient(135deg, ${getEmotionDotColor(record.emotions?.primary)}99, ${getEmotionDotColor(record.emotions?.primary)})` }}
+                  <EmotionIcon 
+                    emotion={record.emotions?.primary} 
+                    className="w-10 h-10" 
                   />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -421,9 +444,10 @@ export function HistoryPage() {
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: getEmotionDotColor(selectedRecord.emotions?.primary) + '20' }}>
-                      <div
-                        className="w-8 h-8 rounded-full shadow-inner"
-                        style={{ background: `linear-gradient(135deg, ${getEmotionDotColor(selectedRecord.emotions?.primary)}99, ${getEmotionDotColor(selectedRecord.emotions?.primary)})` }}
+                      <EmotionIcon 
+                        emotion={selectedRecord.emotions?.primary} 
+                        size={24} 
+                        className="w-12 h-12" 
                       />
                     </div>
                     <div>
@@ -572,6 +596,29 @@ export function HistoryPage() {
                       <p className="text-sm text-gray-700">{analysisResult.suggestions}</p>
                     </div>
                   )}
+
+                  {/* Upsell 3: Anchoring - Inside Analysis Result */}
+                  {getUserTier() === 'free' && (
+                    <div className="mt-6 border-t border-gray-100 pt-6">
+                      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 border border-indigo-100">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Crown className="w-5 h-5 text-indigo-600 fill-indigo-100" />
+                          <h4 className="font-bold text-indigo-900">더 깊은 분석이 궁금하시다면</h4>
+                        </div>
+                        <p className="text-sm text-indigo-800/80 leading-relaxed mb-4">
+                          프리미엄 분석은 <span className="font-semibold text-indigo-900">심리학 이론 기반</span>의 
+                          전문 상담과 구체적인 행동 지침을 제공합니다.
+                        </p>
+                        <button
+                          onClick={() => navigate('/settings')}
+                          className="w-full py-3 bg-white border border-indigo-200 text-indigo-700 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors shadow-sm flex items-center justify-center gap-2"
+                        >
+                          프리미엄 시작하기
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -587,8 +634,8 @@ export function HistoryPage() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-24 left-4 right-4 mx-auto max-w-md bg-gray-800 text-white px-5 py-4 rounded-2xl shadow-xl z-40 text-center"
           >
-            <p className="text-sm font-medium mb-1">날짜를 선택해주세요</p>
-            <p className="text-xs text-gray-300">상단의 선택 버튼을 눌러 중복으로 선택할 수 있습니다</p>
+            <p className="text-sm font-medium mb-1">이 날짜에 기록이 없습니다</p>
+            <p className="text-xs text-gray-300">먼저 기록을 추가하거나, 선택 버튼으로 여러 날짜를 분석할 수 있습니다</p>
           </motion.div>
         )}
       </AnimatePresence>

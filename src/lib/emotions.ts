@@ -29,7 +29,7 @@ export const emotionDotColors: Record<EmotionType, string> = {
   happiness:  '#FBBF24',
   gratitude:  '#F472B6',
   excitement: '#FB923C',
-  calm:       '#34D399',
+  calm:       '#22C55E',
   hope:       '#60A5FA',
   pride:      '#A78BFA',
   // 부정: 차가운/강한 톤
@@ -53,7 +53,7 @@ export const emotionGradients: Record<EmotionType, string> = {
   happiness:  'from-amber-300 to-amber-500',
   gratitude:  'from-pink-300 to-pink-500',
   excitement: 'from-orange-300 to-orange-500',
-  calm:       'from-emerald-300 to-emerald-500',
+  calm:       'from-green-300 to-green-500',
   hope:       'from-blue-300 to-blue-500',
   pride:      'from-violet-300 to-violet-500',
   sadness:    'from-blue-400 to-blue-600',
@@ -75,7 +75,7 @@ export const emotionColors: Record<EmotionType, string> = {
   happiness:  'bg-amber-100 text-amber-700',
   gratitude:  'bg-pink-100 text-pink-700',
   excitement: 'bg-orange-100 text-orange-700',
-  calm:       'bg-emerald-100 text-emerald-700',
+  calm:       'bg-green-100 text-green-700',
   hope:       'bg-blue-100 text-blue-700',
   pride:      'bg-violet-100 text-violet-700',
   sadness:    'bg-blue-100 text-blue-700',
@@ -105,6 +105,28 @@ export const ALL_EMOTIONS: EmotionType[] = [
   ...emotionGroups.negative,
   ...emotionGroups.neutral,
 ];
+
+// ─── 아이콘 매핑 (Lucide) ───
+export const emotionIconNames: Record<EmotionType, string> = {
+  happiness:  'Smile',
+  gratitude:  'Heart',
+  excitement: 'Zap',
+  calm:       'Leaf',
+  hope:       'Sunrise',
+  pride:      'Crown',
+  sadness:    'CloudRain',
+  loneliness: 'Moon',
+  anger:      'Flame',
+  irritation: 'AlertTriangle',
+  anxiety:    'Waves',
+  fear:       'Ghost',
+  shame:      'EyeOff',
+  disgust:    'Ban',
+  surprise:   'Sparkles',
+  confusion:  'HelpCircle',
+  boredom:    'Coffee',
+  nostalgia:  'Clock',
+};
 
 // ─── 헬퍼 함수 ───
 

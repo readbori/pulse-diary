@@ -74,8 +74,12 @@ export function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="max-w-md mx-auto">
       <header className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm">
-        <h1 className="text-xl font-bold text-gray-800">설정</h1>
+        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <Zap className="w-5 h-5 text-indigo-600" />
+          설정
+        </h1>
       </header>
 
       <main className="p-4 space-y-4">
@@ -348,6 +352,7 @@ export function SettingsPage() {
           </div>
         </section>
       </main>
+      </div>
 
       <AnimatePresence>
         {showPremiumModal && (
