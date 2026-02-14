@@ -113,18 +113,23 @@ export function ReportsPage() {
             <FileText className="w-5 h-5 text-indigo-600" />
             리포트
           </h1>
-          <button
-            onClick={handleCheckNow}
-            disabled={recordCount === 0}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-              recordCount > 0
-                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            지금 분석하기
-          </button>
+          <div className="text-right">
+            <button
+              onClick={handleCheckNow}
+              disabled={recordCount === 0}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                recordCount > 0
+                  ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              지금 분석하기
+            </button>
+            {recordCount === 0 && (
+              <p className="text-xs text-gray-400 mt-1">감정을 먼저 기록해주세요</p>
+            )}
+          </div>
         </div>
 
         {reports.length === 0 ? (

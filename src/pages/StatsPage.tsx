@@ -249,7 +249,7 @@ export function StatsPage() {
             </div>
             
             {/* Fake Content for Blur Effect */}
-            <div className="filter blur-[3px] opacity-50 pointer-events-none select-none">
+            <div className="filter blur-[6px] opacity-30 pointer-events-none select-none">
               <h2 className="text-base font-semibold text-gray-800 mb-4">
                 심층 감정 패턴
               </h2>
@@ -268,7 +268,7 @@ export function StatsPage() {
                 </div>
                 <div className="p-3 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    최근 30일간의 데이터를 분석한 결과, 저녁 시간에 불안감이 상승하는 패턴이 보입니다...
+                    프리미엄 분석 데이터가 이곳에 표시됩니다. 나의 감정 패턴과 트리거를 확인하세요.
                   </p>
                 </div>
               </div>

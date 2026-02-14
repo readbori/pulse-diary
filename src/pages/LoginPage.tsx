@@ -1,18 +1,29 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/Toast';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { PrivacyModal } from '@/components/PrivacyModal';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
 export function LoginPage() {
   const { signInWithGoogle, loading } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const supabaseReady = isSupabaseConfigured();
 
   const handleGoogleLogin = async () => {
+    if (!supabaseReady) {
+      toast.show('현재 구글 로그인을 준비 중입니다. 먼저 둘러보기를 이용해주세요.', 'info');
+      return;
+    }
     try {
       await signInWithGoogle();
     } catch (error) {
       console.error('Login failed:', error);
-      alert('로그인에 실패했습니다. 다시 시도해주세요.');
+      toast.show('로그인에 실패했습니다. 다시 시도해주세요.', 'error');
     }
   };
 
@@ -44,8 +55,8 @@ export function LoginPage() {
         <div className="space-y-4">
           <button
             onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full py-4 bg-white rounded-2xl shadow-md border border-gray-100 flex items-center justify-center gap-3 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed group"
+            disabled={loading || !supabaseReady}
+            className="w-full py-4 bg-white rounded-2xl shadow-md border border-gray-100 flex items-center justify-center gap-3 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -74,9 +85,15 @@ export function LoginPage() {
             )}
           </button>
 
+          {!supabaseReady && (
+            <p className="text-xs text-gray-400 -mt-1 text-center">
+              구글 로그인은 곧 지원될 예정입니다
+            </p>
+          )}
+
           <button
             onClick={handleSkip}
-            className="w-full py-3 text-sm text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 transition-colors"
+            className="w-full py-3 text-base text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 transition-colors font-medium"
           >
             먼저 둘러보기
             <ArrowRight className="w-4 h-4" />
@@ -85,10 +102,19 @@ export function LoginPage() {
       </motion.div>
 
       <div className="absolute bottom-8 text-center">
-        <p className="text-xs text-gray-300">
-          로그인 시 개인정보처리방침 및 이용약관에 동의하게 됩니다.
+        <p className="text-xs text-gray-400">
+          로그인 시{' '}
+          <button
+            onClick={() => setPrivacyOpen(true)}
+            className="underline hover:text-gray-600 transition-colors"
+          >
+            개인정보처리방침 및 이용약관
+          </button>
+          에 동의하게 됩니다.
         </p>
       </div>
+
+      <PrivacyModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </div>
   );
 }
