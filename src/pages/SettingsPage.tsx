@@ -1,11 +1,11 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Calendar, Trash2, User, FileText, Info, Sparkles, Zap, Download, Upload, Shield, LogOut } from 'lucide-react';
+import { Bell, Calendar, Trash2, User, FileText, Info, Zap, Download, Upload, Shield, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getSettings, saveSettings, getProfile, saveProfile } from '@/lib/db';
 import { exportBackup, importBackup } from '@/lib/backup';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserTier, setUserTier, getAIModelInfo, type UserTier } from '@/lib/user';
+
 import type { UserSettings, UserProfile } from '@/types';
 
 export function SettingsPage() {
@@ -15,8 +15,7 @@ export function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
-  const [currentTier, setCurrentTier] = useState<UserTier>(getUserTier());
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
@@ -92,11 +91,6 @@ export function SettingsPage() {
     setTimeout(() => setToast(null), 2000);
   };
 
-  const handleTierChange = (tier: UserTier) => {
-    setUserTier(tier);
-    setCurrentTier(tier);
-    showToast(`${tier === 'free' ? '무료' : '프리미엄'} 등급으로 전환되었습니다`);
-  };
 
   const handleExportBackup = async () => {
     const userId = localStorage.getItem('pulse_user_id');
@@ -155,15 +149,13 @@ export function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-md mx-auto">
-      <header className="bg-white pl-16 pr-4 py-4 sticky top-0 z-10 shadow-sm">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+      <div className="max-w-md mx-auto pt-16 px-4">
+        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-6">
           <Zap className="w-5 h-5 text-indigo-600" />
           설정
         </h1>
-      </header>
 
-      <main className="p-4 space-y-4">
+      <main className="space-y-4">
         {isLocalUser && (
           <section className="bg-gradient-to-r from-indigo-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-indigo-100/50">
             <div className="flex items-start gap-3">
@@ -447,52 +439,6 @@ export function SettingsPage() {
 
         <section className="bg-white rounded-2xl p-5 shadow-sm">
           <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            AI 분석 등급
-          </h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleTierChange('free')}
-                className={`p-4 rounded-xl text-left transition-all border-2 ${
-                  currentTier === 'free'
-                    ? 'border-teal-400 bg-teal-50'
-                    : 'border-transparent bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-4 h-4 text-teal-500" />
-                  <span className="text-sm font-semibold text-gray-800">Free</span>
-                </div>
-                <p className="text-xs text-gray-500">기본 AI 분석</p>
-                <p className="text-xs text-gray-400">무료 제공</p>
-              </button>
-              <button
-                onClick={() => setShowPremiumModal(true)}
-                className={`p-4 rounded-xl text-left transition-all border-2 ${
-                  currentTier === 'premium' || currentTier === 'advanced'
-                    ? 'border-indigo-400 bg-indigo-50'
-                    : 'border-transparent bg-gray-50 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span className="text-sm font-semibold text-gray-800">Premium</span>
-                </div>
-                <p className="text-xs text-gray-500">고급 심리 분석 AI</p>
-                <p className="text-xs text-gray-400">프리미엄 전용</p>
-              </button>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-xs text-gray-500">
-                현재 등급: <span className="font-semibold text-gray-700">{currentTier === 'free' ? '무료' : '프리미엄'}</span>
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl p-5 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Info className="w-5 h-5 text-gray-500" />
             앱 정보
           </h2>
@@ -544,80 +490,6 @@ export function SettingsPage() {
         )}
       </main>
       </div>
-
-      <AnimatePresence>
-        {showPremiumModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPremiumModal(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative z-10"
-            >
-              <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-6 text-white text-center">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Sparkles className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold mb-1">프리미엄으로 업그레이드</h3>
-                <p className="text-sm text-white/80">더 깊은 감정 분석을 경험하세요</p>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">고급 심리 분석 AI</p>
-                      <p className="text-xs text-gray-500">더 정확하고 깊이 있는 감정 분석 제공</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-4 h-4 text-teal-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">무제한 감정 리포트</p>
-                      <p className="text-xs text-gray-500">일별, 주간별, 월간별 상세 리포트</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">맞춤 성장 상담</p>
-                      <p className="text-xs text-gray-500">나의 감정 히스토리 기반 누적 성장 코칭</p>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    handleTierChange('premium');
-                    setShowPremiumModal(false);
-                  }}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-xl font-bold hover:from-indigo-600 hover:to-violet-700 transition-all shadow-lg"
-                >
-                  프리미엄 시작하기
-                </button>
-                <button
-                  onClick={() => setShowPremiumModal(false)}
-                  className="w-full py-2 mt-2 text-gray-400 text-sm"
-                >
-                  나중에 할게요
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {toast && (

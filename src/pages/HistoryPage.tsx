@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles, Crown, ArrowRight, Heart, Star, Lightbulb, TrendingUp, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronRight, Trash2, X, Edit2, ChevronLeft, Mic, Plus, Sparkles, ArrowRight, Heart, Star, Lightbulb, TrendingUp, FileText } from 'lucide-react';
 import { EmotionIcon } from '@/components/EmotionIcon';
 import { useNavigate } from 'react-router-dom';
 import { getRecordsByDateRange, deleteRecord, updateRecord, saveReport, getReports, getProfile } from '@/lib/db';
 import { getMonthHolidays, type HolidayInfo } from '@/lib/holidays';
 import { getEmotionDotColor, getEmotionGradient, getEmotionColor, getEmotionLabel, normalizeEmotion } from '@/lib/emotions';
 import { generateReport } from '@/lib/ai';
-import { getUserTier } from '@/lib/user';
+
 import type { EmotionRecord, UserProfile } from '@/types';
 
 export function HistoryPage() {
@@ -229,7 +229,7 @@ export function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 max-w-md mx-auto">
-      <header className="bg-white pl-16 pr-4 py-4 sticky top-0 z-10 shadow-sm">
+      <div className="pt-16 px-4">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-indigo-600" />
@@ -349,9 +349,9 @@ export function HistoryPage() {
             );
           })}
         </div>
-      </header>
+      </div>
 
-      <main className="p-4 space-y-3">
+      <main className="px-4 space-y-3">
         <div className="flex justify-between items-center">
           <h2 className="text-base font-semibold text-gray-800">
             {formatDate(selectedDate)}
@@ -627,28 +627,7 @@ export function HistoryPage() {
                     </div>
                   )}
 
-                  {/* Upsell 3: Anchoring - Inside Analysis Result */}
-                  {getUserTier() === 'free' && (
-                    <div className="mt-6 border-t border-gray-100 pt-6">
-                      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-5 border border-indigo-100">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Crown className="w-5 h-5 text-indigo-600 fill-indigo-100" />
-                          <h4 className="font-bold text-indigo-900">더 깊은 분석이 궁금하시다면</h4>
-                        </div>
-                        <p className="text-sm text-indigo-800/80 leading-relaxed mb-4">
-                          프리미엄 분석은 <span className="font-semibold text-indigo-900">심리학 이론 기반</span>의 
-                          전문 상담과 구체적인 행동 지침을 제공합니다.
-                        </p>
-                        <button
-                          onClick={() => navigate('/settings')}
-                          className="w-full py-3 bg-white border border-indigo-200 text-indigo-700 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors shadow-sm flex items-center justify-center gap-2"
-                        >
-                          프리미엄 시작하기
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               </div>
             </motion.div>

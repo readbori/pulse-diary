@@ -1,16 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Sparkles, X, Send, Mic, Activity, Moon, Sun, Cloud, Zap, Crown } from 'lucide-react';
+import { Calendar, Sparkles, X, Send, Mic, Activity, Moon, Sun, Cloud, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { RecordButton } from '@/components/RecordButton';
 import { StreakDisplay } from '@/components/StreakDisplay';
 import { TranscriptModal } from '@/components/TranscriptModal';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
-import { saveRecord, updateStreak, getStreak, getProfile, getRecordsByDateRange } from '@/lib/db';
+import { saveRecord, updateStreak, getStreak, getProfile, getRecordsByDateRange, updateRecordPartial } from '@/lib/db';
 import { analyzeEmotion } from '@/lib/ai';
 import { getEmotionLabel } from '@/lib/emotions';
-import { getUserTier } from '@/lib/user';
 import type { StreakData, UserProfile, EmotionRecord } from '@/types';
 
 const DEMO_USER_ID = 'demo-user';
@@ -119,35 +118,39 @@ export function HomePage() {
     
     try {
       const userId = localStorage.getItem('pulse_user_id') || DEMO_USER_ID;
-      const emotions = await analyzeEmotion(transcript, profile ?? undefined);
       
-      await saveRecord({
-        userId,
-        createdAt: new Date(),
-        audioBlob: audioBlob || undefined,
-        transcript,
-        duration,
-        language: 'ko',
-        emotions,
-        syncStatus: 'local'
-      });
+      // 즉시 저장 (감정 분석 없이) — 사용자 체감 즉시 완료
+      const [recordId] = await Promise.all([
+        saveRecord({
+          userId,
+          createdAt: new Date(),
+          audioBlob: audioBlob || undefined,
+          transcript,
+          duration,
+          language: 'ko',
+          syncStatus: 'local'
+        }),
+        updateStreak(userId).then(s => setStreak(s)),
+      ]);
 
-      const updatedStreak = await updateStreak(userId);
-      setStreak(updatedStreak);
-      
       setSaveSuccess(true);
       setShowModal(false);
       
       setTimeout(() => {
         handleResetRecording();
       }, 2000);
+
+      // 백그라운드 감정 분석 — 저장 후 비동기로 업데이트
+      analyzeEmotion(transcript, profile ?? undefined)
+        .then(emotions => updateRecordPartial(recordId, { emotions }))
+        .catch(err => console.warn('[AI] Background analysis failed:', err));
       
     } catch (err) {
       console.error('Save error:', err);
     } finally {
       setIsProcessing(false);
     }
-  }, [transcript, audioBlob, duration, handleResetRecording]);
+  }, [transcript, audioBlob, duration, profile, handleResetRecording]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -317,32 +320,15 @@ export function HomePage() {
 
         <AnimatePresence>
           {saveSuccess && (
-            <motion.button
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              onClick={() => getUserTier() === 'free' && navigate('/settings')}
-              className={`fixed inset-x-4 bottom-24 mx-auto max-w-sm px-6 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 z-50 transition-all ${
-                getUserTier() === 'free' 
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white cursor-pointer hover:scale-105' 
-                  : 'bg-gradient-to-r from-teal-400 to-emerald-500 text-white'
-              }`}
+              className="fixed inset-x-4 bottom-24 mx-auto max-w-sm px-6 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 z-50 bg-gradient-to-r from-teal-400 to-emerald-500 text-white"
             >
-              {getUserTier() === 'free' ? (
-                <>
-                  <Crown className="w-5 h-5 text-yellow-300 fill-yellow-300 animate-pulse" />
-                  <div className="text-left">
-                    <p className="font-bold text-sm">기록이 저장되었어요</p>
-                    <p className="text-xs text-indigo-100">프리미엄으로 더 깊이 분석해보세요</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span className="font-medium">오늘의 마음을 기록했어요</span>
-                </>
-              )}
-            </motion.button>
+              <Sparkles className="w-5 h-5" />
+              <span className="font-medium">오늘의 마음을 기록했어요</span>
+            </motion.div>
           )}
         </AnimatePresence>
       </motion.div>

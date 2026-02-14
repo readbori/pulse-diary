@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Calendar, Flame, ArrowRight, Lock, Crown } from 'lucide-react';
+import { BarChart3, TrendingUp, Calendar, Flame, ArrowRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { getAllRecords, getStreak } from '@/lib/db';
-import { getUserTier } from '@/lib/user';
+
 import { emotionLabels, emotionDotColors, emotionGradients, getEmotionLabel, getEmotionDotColor, normalizeEmotion } from '@/lib/emotions';
 import { EmotionIcon } from '@/components/EmotionIcon';
 import type { EmotionRecord, StreakData, EmotionType } from '@/types';
@@ -82,8 +82,6 @@ export function StatsPage() {
   const mostFrequent = getMostFrequentEmotion();
   const totalRecords = records.length;
   const thisWeekRecords = chartData.reduce((sum, d) => sum + d.count, 0);
-  const userTier = getUserTier();
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -93,11 +91,11 @@ export function StatsPage() {
   }
 
   return (
-    <div className="min-h-screen pl-16 pr-4 py-20 bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md mx-auto"
+        className="max-w-md mx-auto pt-16 px-4"
       >
         <h1 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-indigo-600" />
@@ -226,56 +224,6 @@ export function StatsPage() {
           </motion.div>
         )}
 
-        {/* Upsell 1: Curiosity Gap - After Pie Chart */}
-        {userTier === 'free' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="bg-white rounded-2xl p-5 shadow-sm mb-6 relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6">
-              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mb-3">
-                <Lock className="w-6 h-6 text-indigo-600" />
-              </div>
-              <h3 className="font-bold text-gray-800 mb-1">심층 감정 패턴 분석</h3>
-              <p className="text-sm text-gray-500 mb-4">프리미엄에서 더 깊은 패턴을 발견하세요</p>
-              <button 
-                onClick={() => navigate('/settings')}
-                className="px-5 py-2 bg-indigo-600 text-white rounded-full text-sm font-medium hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-              >
-                잠금 해제하기
-              </button>
-            </div>
-            
-            {/* Fake Content for Blur Effect */}
-            <div className="filter blur-[6px] opacity-30 pointer-events-none select-none">
-              <h2 className="text-base font-semibold text-gray-800 mb-4">
-                심층 감정 패턴
-              </h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">주요 감정 트리거</span>
-                  <div className="w-24 h-2 bg-gray-200 rounded-full">
-                    <div className="w-3/4 h-full bg-indigo-400 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">감정 회복 탄력성</span>
-                  <div className="w-24 h-2 bg-gray-200 rounded-full">
-                    <div className="w-1/2 h-full bg-teal-400 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl">
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    프리미엄 분석 데이터가 이곳에 표시됩니다. 나의 감정 패턴과 트리거를 확인하세요.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -327,34 +275,6 @@ export function StatsPage() {
             </ResponsiveContainer>
           )}
         </motion.div>
-
-        {/* Upsell 2: Loss Aversion - Below 7 Days Chart */}
-        {userTier === 'free' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65 }}
-            className="mb-6 rounded-2xl p-[1px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
-          >
-            <div className="bg-white rounded-2xl p-4 flex items-center justify-between gap-3">
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Crown className="w-4 h-4 text-purple-500 fill-purple-100" />
-                  <span className="text-xs font-bold text-purple-600">프리미엄 리포트</span>
-                </div>
-                <p className="text-sm text-gray-700 font-medium">
-                  프리미엄 회원은 30일 감정 추세와<br/>AI 인사이트를 받아보세요
-                </p>
-              </div>
-              <button 
-                onClick={() => navigate('/settings')}
-                className="shrink-0 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg font-medium hover:bg-gray-800 transition-colors"
-              >
-                보기
-              </button>
-            </div>
-          </motion.div>
-        )}
 
         {getRecentRecords().length > 0 && (
           <motion.div

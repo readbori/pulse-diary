@@ -146,6 +146,14 @@ export async function updateRecord(record: EmotionRecord): Promise<void> {
   pushRecord(record).catch(() => {});
 }
 
+export async function updateRecordPartial(id: string, changes: Partial<EmotionRecord>): Promise<void> {
+  await db.records.update(id, changes);
+  const updated = await db.records.get(id);
+  if (updated) {
+    pushRecord(updated).catch(() => {});
+  }
+}
+
 export async function deleteRecord(id: string): Promise<void> {
   await db.records.delete(id);
   deleteRemoteRecord(id).catch(() => {});

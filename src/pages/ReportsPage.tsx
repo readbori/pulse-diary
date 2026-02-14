@@ -102,11 +102,11 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen pl-16 pr-4 py-20 bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md mx-auto"
+        className="max-w-md mx-auto pt-16 px-4"
       >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
