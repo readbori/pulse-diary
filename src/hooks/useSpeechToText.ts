@@ -44,7 +44,15 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
   const [isSupported, setIsSupported] = useState(true);
   
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const isListeningRef = useRef(false);
 
+  // Keep ref in sync with state — avoids stale closures in onend handler
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // Create SpeechRecognition instance ONCE per language change
+  // (NOT on every isListening toggle — that caused duplicate instances)
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -82,8 +90,10 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
       setIsListening(false);
     };
     
+    // Read ref (not state) to avoid stale closure — the recognition instance
+    // persists across isListening changes, so we need the latest value via ref.
     recognition.onend = () => {
-      if (isListening) {
+      if (isListeningRef.current) {
         try {
           recognition.start();
         } catch {
@@ -97,7 +107,7 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
     return () => {
       recognition.stop();
     };
-  }, [language, isListening]);
+  }, [language]);
 
   const startListening = useCallback(() => {
     setError(null);

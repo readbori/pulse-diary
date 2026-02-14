@@ -22,6 +22,7 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const stopRecordingRef = useRef<() => void>(() => {});
 
   const isAndroid = /Android/i.test(navigator.userAgent);
 
@@ -34,7 +35,8 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
       setDuration(elapsed);
 
       if (elapsed >= maxDuration) {
-        stopRecording();
+        // Use ref to avoid stale closure — stopRecording is defined after startTimer
+        stopRecordingRef.current();
       }
     }, 100);
   }, [maxDuration]);
@@ -101,6 +103,9 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
     }
     setIsRecording(false);
   }, []);
+
+  // Keep ref in sync so startTimer's interval can call the latest stopRecording
+  stopRecordingRef.current = stopRecording;
 
   const resetRecording = useCallback(() => {
     setAudioBlob(null);
