@@ -47,15 +47,22 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const isListeningRef = useRef(false);
 
+  // Transcript accumulation across recognition sessions.
+  // Chrome auto-stops recognition after ~60s of continuous use and onend restarts it.
+  // event.results resets on each start(), so we must preserve prior sessions' text.
+  const committedTranscriptRef = useRef('');
+  const sessionTranscriptRef = useRef('');
+  const isAndroidRef = useRef(false);
+
   // Keep ref in sync with state — avoids stale closures in onend handler
   useEffect(() => {
     isListeningRef.current = isListening;
   }, [isListening]);
 
   // Create SpeechRecognition instance ONCE per language change
-  // (NOT on every isListening toggle — that caused duplicate instances)
   useEffect(() => {
     const platform = getPlatformInfo();
+    isAndroidRef.current = platform.isAndroid;
 
     if (platform.isIOSStandalonePWA) {
       setIsSupported(false);
@@ -77,18 +84,25 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
     recognition.interimResults = true;
     
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      // Rebuild current session's transcript from the full event.results array.
+      // This prevents Android/Chrome duplicate final emissions — if Chrome re-emits
+      // the same final result, we just rebuild the same string (idempotent).
+      let sessionFinals = '';
+
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
-          finalTranscript += result[0].transcript;
+          // Android Chrome sometimes emits phantom finals with confidence === 0.
+          // Filter them out to avoid garbage text.
+          if (isAndroidRef.current && result[0].confidence === 0) {
+            continue;
+          }
+          sessionFinals += result[0].transcript;
         }
       }
-      
-      if (finalTranscript) {
-        setTranscript(prev => prev + finalTranscript);
-      }
+
+      sessionTranscriptRef.current = sessionFinals;
+      setTranscript(committedTranscriptRef.current + sessionFinals);
     };
     
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -100,10 +114,14 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
       setIsListening(false);
     };
     
-    // Read ref (not state) to avoid stale closure — the recognition instance
-    // persists across isListening changes, so we need the latest value via ref.
     recognition.onend = () => {
       if (isListeningRef.current) {
+        // Commit this session's finals before starting a new session.
+        // recognition.start() resets event.results to empty, so anything
+        // not committed here would be lost.
+        committedTranscriptRef.current += sessionTranscriptRef.current;
+        sessionTranscriptRef.current = '';
+
         try {
           recognition.start();
         } catch {
@@ -129,8 +147,12 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
       return;
     }
 
+    // Clear accumulation state for fresh recording
+    committedTranscriptRef.current = '';
+    sessionTranscriptRef.current = '';
+
     try {
-      isListeningRef.current = true;  // Set ref BEFORE start() so onend sees correct value
+      isListeningRef.current = true;
       recognitionRef.current.start();
       setIsListening(true);
     } catch (err) {
@@ -153,6 +175,8 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
   const resetTranscript = useCallback(() => {
     setTranscript('');
     setError(null);
+    committedTranscriptRef.current = '';
+    sessionTranscriptRef.current = '';
   }, []);
 
   return {
