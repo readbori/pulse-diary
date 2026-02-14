@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { getPlatformInfo } from '@/lib/platform';
 
 interface UseVoiceRecorderReturn {
   isRecording: boolean;
@@ -24,8 +25,6 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
   const startTimeRef = useRef<number>(0);
   const stopRecordingRef = useRef<() => void>(() => {});
 
-  const isAndroid = /Android/i.test(navigator.userAgent);
-
   const startTimer = useCallback(() => {
     startTimeRef.current = Date.now();
     setIsRecording(true);
@@ -43,13 +42,28 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
 
   const startRecording = useCallback(async () => {
     try {
+      const platform = getPlatformInfo();
+      const timerOnlyMode = platform.isAndroid || platform.isIOS;
+
       setError(null);
       setIsPreparing(true);
       chunksRef.current = [];
 
-      // Android Chrome: getUserMedia와 SpeechRecognition 동시 사용 불가
-      // (Chromium bug #41083534). 타이머만 실행하고 SpeechRecognition에 마이크 양보.
-      if (isAndroid) {
+      // Mobile Safari/Chrome: STT와 MediaRecorder 동시 마이크 점유 충돌을 줄이기 위해
+      // 타이머 기반 모드로 동작 (텍스트 인식 우선).
+      if (timerOnlyMode) {
+        startTimer();
+        setIsPreparing(false);
+        return;
+      }
+
+      if (!platform.supportsGetUserMedia) {
+        setIsPreparing(false);
+        setError('현재 브라우저에서는 음성 녹음을 지원하지 않습니다.');
+        return;
+      }
+
+      if (!platform.supportsMediaRecorder) {
         startTimer();
         setIsPreparing(false);
         return;
@@ -94,7 +108,7 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
       setError('마이크 권한이 필요합니다.');
       console.error('Recording error:', err);
     }
-  }, [maxDuration, isAndroid, startTimer]);
+  }, [startTimer]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {

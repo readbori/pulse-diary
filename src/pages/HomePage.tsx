@@ -37,6 +37,7 @@ export function HomePage() {
 
   const {
     transcript,
+    isSupported: isSpeechSupported,
     startListening,
     stopListening,
     resetTranscript,
@@ -90,11 +91,13 @@ export function HomePage() {
       resetTranscript();
       setSaveSuccess(false);
       await startRecording();
-      startListening();
+      if (isSpeechSupported) {
+        startListening();
+      }
     } finally {
       isStartingRef.current = false;
     }
-  }, [startRecording, startListening, resetTranscript]);
+  }, [startRecording, startListening, resetTranscript, isSpeechSupported]);
 
   const handleStopRecording = useCallback(() => {
     stopRecording();

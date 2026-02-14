@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { getPlatformInfo } from '@/lib/platform';
 
 interface SpeechRecognitionEvent {
   resultIndex: number;
@@ -54,6 +55,14 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
   // Create SpeechRecognition instance ONCE per language change
   // (NOT on every isListening toggle — that caused duplicate instances)
   useEffect(() => {
+    const platform = getPlatformInfo();
+
+    if (platform.isIOSStandalonePWA) {
+      setIsSupported(false);
+      setError('현재 환경에서는 음성 인식 기능이 제한됩니다.');
+      return;
+    }
+
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognitionAPI) {
@@ -86,6 +95,7 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
       if (event.error === 'no-speech') {
         return;
       }
+      isListeningRef.current = false;
       setError(`음성 인식 오류: ${event.error}`);
       setIsListening(false);
     };
@@ -113,15 +123,19 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
     // Guard: prevent double-start (throws "recognition has already started")
     if (isListeningRef.current) return;
     setError(null);
-    if (recognitionRef.current) {
-      try {
-        isListeningRef.current = true;  // Set ref BEFORE start() so onend sees correct value
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err) {
-        isListeningRef.current = false;
-        console.error('Start listening error:', err);
-      }
+    if (!recognitionRef.current) {
+      setIsSupported(false);
+      setError('현재 브라우저에서는 음성 인식을 지원하지 않습니다.');
+      return;
+    }
+
+    try {
+      isListeningRef.current = true;  // Set ref BEFORE start() so onend sees correct value
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (err) {
+      isListeningRef.current = false;
+      console.error('Start listening error:', err);
     }
   }, []);
 
