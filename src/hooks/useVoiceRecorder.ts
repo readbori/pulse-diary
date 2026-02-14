@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 
 interface UseVoiceRecorderReturn {
   isRecording: boolean;
+  isPreparing: boolean;
   audioBlob: Blob | null;
   duration: number;
   startRecording: () => Promise<void>;
@@ -12,6 +13,7 @@ interface UseVoiceRecorderReturn {
 
 export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -21,10 +23,35 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
 
+  const isAndroid = /Android/i.test(navigator.userAgent);
+
+  const startTimer = useCallback(() => {
+    startTimeRef.current = Date.now();
+    setIsRecording(true);
+
+    timerRef.current = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setDuration(elapsed);
+
+      if (elapsed >= maxDuration) {
+        stopRecording();
+      }
+    }, 100);
+  }, [maxDuration]);
+
   const startRecording = useCallback(async () => {
     try {
       setError(null);
+      setIsPreparing(true);
       chunksRef.current = [];
+
+      // Android Chrome: getUserMedia와 SpeechRecognition 동시 사용 불가
+      // (Chromium bug #41083534). 타이머만 실행하고 SpeechRecognition에 마이크 양보.
+      if (isAndroid) {
+        startTimer();
+        setIsPreparing(false);
+        return;
+      }
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
@@ -51,27 +78,22 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
       
       mediaRecorder.start(1000);
       mediaRecorderRef.current = mediaRecorder;
-      startTimeRef.current = Date.now();
-      setIsRecording(true);
-      
-      timerRef.current = window.setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setDuration(elapsed);
-        
-        if (elapsed >= maxDuration) {
-          stopRecording();
-        }
-      }, 100);
+      startTimer();
+      setIsPreparing(false);
       
     } catch (err) {
+      setIsPreparing(false);
       setError('마이크 권한이 필요합니다.');
       console.error('Recording error:', err);
     }
-  }, [maxDuration]);
+  }, [maxDuration, isAndroid, startTimer]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+    } else if (timerRef.current) {
+      // Android 타이머 전용 모드: MediaRecorder 없이 녹음 완료 신호
+      setAudioBlob(new Blob([], { type: 'audio/webm' }));
     }
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -89,6 +111,7 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
 
   return {
     isRecording,
+    isPreparing,
     audioBlob,
     duration,
     startRecording,

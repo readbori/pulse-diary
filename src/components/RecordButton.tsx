@@ -5,6 +5,7 @@ import { getEmotionGradient } from '@/lib/emotions';
 
 interface RecordButtonProps {
   isRecording: boolean;
+  isPreparing: boolean;
   duration: number;
   onStart: () => void;
   onStop: () => void;
@@ -16,6 +17,7 @@ interface RecordButtonProps {
 
 export function RecordButton({
   isRecording,
+  isPreparing,
   duration,
   onStart,
   onStop,
@@ -64,13 +66,16 @@ export function RecordButton({
             <motion.button
               whileTap={{ scale: 0.95 }}
               whileHover={{ scale: 1.05 }}
-              onClick={isRecording ? onStop : onStart}
+              onClick={isPreparing ? undefined : (isRecording ? onStop : onStart)}
+              disabled={isPreparing}
               className={`
                 relative w-36 h-36 rounded-full flex items-center justify-center
-                transition-all duration-500 soft-shadow
-                ${isRecording 
-                  ? 'bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 animate-pulse-ring' 
-                  : `bg-gradient-to-br ${recentEmotion ? getEmotionGradient(recentEmotion) : 'from-indigo-500 via-teal-500 to-sky-400'} ${!recentEmotion ? 'hover:from-indigo-600 hover:via-teal-600 hover:to-sky-500' : ''}`
+                soft-shadow
+                ${isPreparing
+                  ? 'bg-gradient-to-br from-indigo-400 via-teal-400 to-sky-300 animate-pulse-soft'
+                  : isRecording 
+                    ? 'bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 animate-pulse-ring' 
+                    : `bg-gradient-to-br ${recentEmotion ? getEmotionGradient(recentEmotion) : 'from-indigo-500 via-teal-500 to-sky-400'} ${!recentEmotion ? 'hover:from-indigo-600 hover:via-teal-600 hover:to-sky-500' : ''}`
                 }
               `}
             >
@@ -78,7 +83,9 @@ export function RecordButton({
                 animate={isRecording ? { scale: [1, 1.15, 1] } : {}}
                 transition={{ duration: 0.8, repeat: isRecording ? Infinity : 0 }}
               >
-                {isRecording ? (
+                {isPreparing ? (
+                  <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : isRecording ? (
                   <Square className="w-12 h-12 text-white fill-white drop-shadow-lg" />
                 ) : (
                   <Mic className="w-14 h-14 text-white drop-shadow-lg" />
@@ -130,7 +137,19 @@ export function RecordButton({
           </motion.div>
         )}
         
-        {!isRecording && !hasRecording && (
+        {isPreparing && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center gap-2"
+          >
+            <span className="text-lg text-indigo-500 font-emotional">
+              마이크 준비 중...
+            </span>
+          </motion.div>
+        )}
+
+        {!isRecording && !isPreparing && !hasRecording && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

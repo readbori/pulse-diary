@@ -26,6 +26,7 @@ export function HomePage() {
 
   const {
     isRecording,
+    isPreparing,
     audioBlob,
     duration,
     startRecording,
@@ -255,6 +256,7 @@ export function HomePage() {
         <div className="flex justify-center mb-8">
           <RecordButton
             isRecording={isRecording}
+            isPreparing={isPreparing}
             duration={duration}
             onStart={handleStartRecording}
             onStop={handleStopRecording}
