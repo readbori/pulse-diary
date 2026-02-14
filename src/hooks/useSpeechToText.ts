@@ -110,18 +110,26 @@ export function useSpeechToText(language = 'ko-KR'): UseSpeechToTextReturn {
   }, [language]);
 
   const startListening = useCallback(() => {
+    // Guard: prevent double-start (throws "recognition has already started")
+    if (isListeningRef.current) return;
     setError(null);
     if (recognitionRef.current) {
       try {
+        isListeningRef.current = true;  // Set ref BEFORE start() so onend sees correct value
         recognitionRef.current.start();
         setIsListening(true);
       } catch (err) {
+        isListeningRef.current = false;
         console.error('Start listening error:', err);
       }
     }
   }, []);
 
   const stopListening = useCallback(() => {
+    // CRITICAL: Set ref BEFORE stop() — stop() triggers onend synchronously,
+    // and onend checks isListeningRef to decide whether to restart.
+    // If we don't set it first, onend sees true and creates a zombie instance.
+    isListeningRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }

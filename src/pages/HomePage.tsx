@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Sparkles, X, Send, Mic, Activity, Moon, Sun, Cloud, Zap, Crown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -80,11 +80,20 @@ export function HomePage() {
     loadData();
   }, []);
 
+  const isStartingRef = useRef(false);
+
   const handleStartRecording = useCallback(async () => {
-    resetTranscript();
-    setSaveSuccess(false);
-    await startRecording();
-    startListening();
+    // Guard: prevent double-tap before isPreparing propagates to UI
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+    try {
+      resetTranscript();
+      setSaveSuccess(false);
+      await startRecording();
+      startListening();
+    } finally {
+      isStartingRef.current = false;
+    }
   }, [startRecording, startListening, resetTranscript]);
 
   const handleStopRecording = useCallback(() => {

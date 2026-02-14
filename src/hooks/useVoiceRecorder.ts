@@ -55,7 +55,13 @@ export function useVoiceRecorder(maxDuration = 120): UseVoiceRecorderReturn {
         return;
       }
       
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        }
+      });
       
       // iOS Safari는 audio/webm 미지원 → mp4/aac 폴백
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
