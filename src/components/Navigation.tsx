@@ -39,7 +39,7 @@ export function Navigation() {
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
               className="fixed left-0 top-0 h-full w-72 bg-white shadow-2xl z-50 p-6"
             >
               <div className="flex justify-between items-center mb-8">
